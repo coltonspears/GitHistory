@@ -61,7 +61,7 @@ public sealed partial class AppearanceService(ILogger<AppearanceService> logger,
         if (window.FindName("WorkspaceDock") is DockLayoutManager docking)
             Register("dock-v1.xml", docking.SaveLayoutToStream, docking.RestoreLayoutFromStream);
         if (window.FindName("FilesGrid") is GridControl files)
-            Register("files-v1.xml", files.SaveLayoutToStream, files.RestoreLayoutFromStream);
+            Register("files-v2.xml", files.SaveLayoutToStream, files.RestoreLayoutFromStream);
     }
 
     private void Register(string fileName, Action<Stream> save, Action<Stream> restore)

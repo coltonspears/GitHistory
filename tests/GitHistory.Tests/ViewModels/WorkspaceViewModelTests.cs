@@ -210,6 +210,201 @@ public sealed class WorkspaceViewModelTests
         await workspace.ShutdownAsync();
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Navigation_selection_feedback_during_catalog_refresh_cannot_reopen_previous_workspace(bool clearsSelection)
+    {
+        var repositories = new FakeRepositories();
+        var messenger = new StrongReferenceMessenger();
+        var seen = new SnapshotObserver(messenger);
+        using var workspace = Create(repositories, messenger);
+        await workspace.InitializeAsync(new UserSettings());
+        int callsBeforeSwitch = repositories.RefreshCalls;
+        repositories.Saved = [First with { Name = "First updated" }, Second];
+        bool navigationReset = false;
+        workspace.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName != nameof(workspace.Repositories)) return;
+            navigationReset = true;
+            // Emulate a navigation control coercing SelectedItem when ItemsSource changes.
+            workspace.SelectedRepository = clearsSelection ? null : First;
+        };
+
+        workspace.SelectRepositoryCommand.Execute(Second);
+
+        Assert.True(navigationReset);
+        Assert.Equal(Second.Id, workspace.SelectedRepository?.Id);
+        Assert.Equal(Second.Id, seen.Last?.Repository.Id);
+        Assert.Equal(Second.Id, seen.Last?.Snapshot?.RepositoryId);
+        Assert.Equal(callsBeforeSwitch + 1, repositories.RefreshCalls);
+        Assert.False(workspace.IsBusy);
+        await workspace.ShutdownAsync();
+    }
+
+    [Fact]
+    public async Task Equivalent_catalog_records_reuse_navigation_and_selected_object_identity()
+    {
+        var repositories = new FakeRepositories
+        {
+            List = _ => Task.FromResult<IReadOnlyList<RepositoryInfo>>([
+                First with { Branches = ["main"] }, Second with { Branches = ["main"] }])
+        };
+        using var workspace = Create(repositories, new StrongReferenceMessenger());
+        await workspace.InitializeAsync(new UserSettings());
+        var original = workspace.SelectedRepository;
+        var catalog = workspace.Repositories;
+        var visible = workspace.VisibleRepositories;
+
+        await workspace.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Same(original, workspace.SelectedRepository);
+        Assert.Same(catalog, workspace.Repositories);
+        Assert.Same(visible, workspace.VisibleRepositories);
+        await workspace.ShutdownAsync();
+    }
+
+    [Fact]
+    public async Task Search_and_pin_filters_keep_the_active_workspace_and_do_not_fetch()
+    {
+        var repositories = new FakeRepositories();
+        using var workspace = Create(repositories, new StrongReferenceMessenger());
+        await workspace.InitializeAsync(new UserSettings(SelectedRepositoryId: Second.Id));
+        int calls = repositories.RefreshCalls;
+        workspace.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(workspace.VisibleRepositories)) workspace.SelectedRepository = First;
+        };
+
+        workspace.RepositorySearch = "first";
+        Assert.Equal([First.Id], workspace.VisibleRepositories.Select(repository => repository.Id));
+        Assert.Equal(Second.Id, workspace.SelectedRepository?.Id);
+        workspace.RepositorySearch = "no match";
+        Assert.False(workspace.HasVisibleRepositories);
+        workspace.SelectedRepository = null;
+        Assert.Equal(Second.Id, workspace.SelectedRepository?.Id);
+        workspace.RepositorySearch = "EXAMPLE.com";
+        Assert.Equal(2, workspace.VisibleRepositories.Count);
+
+        workspace.TogglePinCommand.Execute(null);
+        Assert.True(workspace.SelectedIsPinned);
+        Assert.Equal([Second.Id], workspace.PinnedRepositoryIds);
+        Assert.Equal(Second.Id, workspace.VisibleRepositories[0].Id);
+        workspace.ShowOnlyPinned = true;
+        Assert.Equal([Second.Id], workspace.VisibleRepositories.Select(repository => repository.Id));
+        workspace.TogglePinCommand.Execute(Second);
+        Assert.Empty(workspace.VisibleRepositories);
+        Assert.False(workspace.SelectedIsPinned);
+        Assert.Equal(Second.Id, workspace.SelectedRepository?.Id);
+        Assert.Equal(calls, repositories.RefreshCalls);
+        await workspace.ShutdownAsync();
+    }
+
+    [Fact]
+    public async Task Saved_pin_preferences_are_restored_without_forcing_a_pinned_workspace()
+    {
+        using var workspace = Create(new FakeRepositories(), new StrongReferenceMessenger());
+        await workspace.InitializeAsync(new UserSettings(SelectedRepositoryId: First.Id,
+            PinnedRepositoryIds: [Second.Id, Second.Id], ShowOnlyPinned: true));
+
+        Assert.Equal([Second.Id], workspace.PinnedRepositoryIds);
+        Assert.Equal([Second.Id], workspace.VisibleRepositories.Select(repository => repository.Id));
+        Assert.Equal(First.Id, workspace.SelectedRepository?.Id);
+        Assert.False(workspace.SelectedIsPinned);
+        await workspace.ShutdownAsync();
+    }
+
+    [Fact]
+    public async Task Disabling_refresh_on_open_uses_cached_history_but_manual_refresh_still_fetches()
+    {
+        var repositories = new FakeRepositories();
+        var messenger = new StrongReferenceMessenger();
+        var seen = new SnapshotObserver(messenger);
+        using var workspace = Create(repositories, messenger);
+        await workspace.InitializeAsync(new UserSettings(RefreshOnOpen: false));
+
+        Assert.Equal(0, repositories.RefreshCalls);
+        Assert.Equal("cached", seen.Last?.Snapshot?.TipOid);
+        Assert.Contains("refresh on open is off", workspace.Status, StringComparison.Ordinal);
+        workspace.SelectedRepository = Second;
+        Assert.Equal(0, repositories.RefreshCalls);
+        Assert.Equal(Second.Id, seen.Last?.Snapshot?.RepositoryId);
+        await workspace.RefreshCommand.ExecuteAsync(null);
+        Assert.Equal(1, repositories.RefreshCalls);
+        Assert.Equal("Up to date", workspace.Status);
+        await workspace.ShutdownAsync();
+    }
+
+    [Fact]
+    public async Task Disabling_refresh_on_open_still_fetches_a_repository_without_a_completed_cache()
+    {
+        var repositories = new FakeRepositories { Cache = (_, _, _) => Task.FromResult<BranchSnapshot?>(null) };
+        using var workspace = Create(repositories, new StrongReferenceMessenger());
+
+        await workspace.InitializeAsync(new UserSettings(RefreshOnOpen: false));
+
+        Assert.Equal(1, repositories.RefreshCalls);
+        Assert.Equal("Up to date", workspace.Status);
+        await workspace.ShutdownAsync();
+    }
+
+    [Fact]
+    public async Task Reloading_imported_workspaces_preserves_active_branch_and_does_not_refetch()
+    {
+        var repositories = new FakeRepositories();
+        using var workspace = Create(repositories, new StrongReferenceMessenger());
+        await workspace.InitializeAsync(new UserSettings(SelectedRepositoryId: Second.Id));
+        int calls = repositories.RefreshCalls;
+        var selected = workspace.SelectedRepository;
+        repositories.Saved = [First, Second, new RepositoryInfo("third", "Imported", "https://example.com/imported.git", "main", ["main"])];
+
+        await workspace.ReloadRepositoriesAsync();
+
+        Assert.Equal(3, workspace.Repositories.Count);
+        Assert.Same(selected, workspace.SelectedRepository);
+        Assert.Equal("main", workspace.SelectedBranch);
+        Assert.Equal(calls, repositories.RefreshCalls);
+        await workspace.ShutdownAsync();
+    }
+
+    [Fact]
+    public async Task A_slow_reload_cannot_apply_its_preferred_workspace_after_the_user_switches()
+    {
+        var repositories = new FakeRepositories();
+        using var workspace = Create(repositories, new StrongReferenceMessenger());
+        await workspace.InitializeAsync(new UserSettings(RefreshOnOpen: false));
+        var pending = new TaskCompletionSource<IReadOnlyList<RepositoryInfo>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        repositories.List = _ => pending.Task;
+        Task reload = workspace.ReloadRepositoriesAsync(First.Id);
+        workspace.SelectRepositoryCommand.Execute(Second);
+
+        pending.SetResult([First, Second]);
+        await reload;
+
+        Assert.Equal(Second.Id, workspace.SelectedRepository?.Id);
+        Assert.Equal(0, repositories.RefreshCalls);
+        await workspace.ShutdownAsync();
+    }
+
+    [Fact]
+    public async Task Shutdown_waits_for_in_progress_catalog_reload_and_does_not_publish_it()
+    {
+        var repositories = new FakeRepositories();
+        using var workspace = Create(repositories, new StrongReferenceMessenger());
+        await workspace.InitializeAsync(new UserSettings());
+        var pending = new TaskCompletionSource<IReadOnlyList<RepositoryInfo>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        repositories.List = _ => pending.Task;
+        Task reload = workspace.ReloadRepositoriesAsync(Second.Id);
+        Task shutdown = workspace.ShutdownAsync();
+        Assert.False(shutdown.IsCompleted);
+        pending.SetResult([Second]);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => reload);
+        await shutdown;
+
+        Assert.Equal(First.Id, workspace.SelectedRepository?.Id);
+    }
+
     private static WorkspaceViewModel Create(FakeRepositories repositories, IMessenger messenger) =>
         new(repositories, messenger, new Dispatcher(), new Dialogs(), NullLogger<WorkspaceViewModel>.Instance);
 
@@ -241,6 +436,7 @@ public sealed class WorkspaceViewModelTests
         public IReadOnlyList<RepositoryInfo> Saved { get; set; } = [First, Second];
         public Func<CancellationToken, Task<IReadOnlyList<RepositoryInfo>>>? List { get; set; }
         public Func<string, IProgress<OperationProgress>?, CancellationToken, Task<RepositoryInfo>> Connect { get; set; } = (_, _, _) => Task.FromResult(First);
+        public Func<RepositoryInfo, string, CancellationToken, Task<BranchSnapshot?>>? Cache { get; set; }
         public Func<RepositoryInfo, string, IProgress<OperationProgress>?, CancellationToken, Task<BranchSnapshot>> Refresh { get; set; } = (repository, branch, _, _) => Task.FromResult(Fresh(repository, branch));
         public int RefreshCalls { get; private set; }
         public static BranchSnapshot Fresh(RepositoryInfo repository, string branch) =>
@@ -254,7 +450,8 @@ public sealed class WorkspaceViewModelTests
         }
         public Task<IReadOnlyList<RepositoryInfo>> GetRepositoriesAsync(CancellationToken cancellationToken = default) => List?.Invoke(cancellationToken) ?? Task.FromResult(Saved);
         public Task<RepositoryInfo> ConnectAsync(string remoteUrl, IProgress<OperationProgress>? progress, CancellationToken cancellationToken) => Connect(remoteUrl, progress, cancellationToken);
-        public Task<BranchSnapshot?> GetCachedSnapshotAsync(RepositoryInfo repository, string branch, CancellationToken cancellationToken) => Task.FromResult<BranchSnapshot?>(Cached(repository, branch));
+        public Task<BranchSnapshot?> GetCachedSnapshotAsync(RepositoryInfo repository, string branch, CancellationToken cancellationToken) =>
+            Cache?.Invoke(repository, branch, cancellationToken) ?? Task.FromResult<BranchSnapshot?>(Cached(repository, branch));
         public Task<BranchSnapshot> RefreshAsync(RepositoryInfo repository, string branch, IProgress<OperationProgress>? progress, CancellationToken cancellationToken)
         {
             RefreshCalls++;

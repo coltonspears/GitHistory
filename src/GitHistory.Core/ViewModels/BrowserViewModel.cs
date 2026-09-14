@@ -18,6 +18,7 @@ public sealed partial class BrowserViewModel : ObservableObject, IDisposable
     private RepositoryInfo? _repository;
     private int _queryVersion;
     private bool _changingDates;
+    private bool _updatingTree;
     private readonly object _taskGate = new();
     private readonly HashSet<Task> _pending = [];
     private readonly CancellationTokenSource _lifetime = new();
@@ -25,7 +26,11 @@ public sealed partial class BrowserViewModel : ObservableObject, IDisposable
     private Task? _shutdown;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(FilesCount))] public partial IReadOnlyList<FileRow> Files { get; set; } = [];
     [ObservableProperty] public partial IReadOnlyList<DirectoryNode> TreeNodes { get; set; } = [];
-    [ObservableProperty] public partial DirectoryNode? SelectedNode { get; set; }
+    [ObservableProperty] public partial IReadOnlyList<DirectoryNode> VisibleTreeNodes { get; set; } = [];
+    [ObservableProperty] public partial string FolderSearch { get; set; } = "";
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(FolderLabel))] public partial DirectoryNode? SelectedNode { get; set; }
+    public string FolderLabel => string.IsNullOrEmpty(SelectedNode?.Path) ? "All folders" : SelectedNode.Path;
+    [ObservableProperty] public partial bool IsBusy { get; set; }
     [ObservableProperty] public partial IReadOnlyList<string> Authors { get; set; } = ["All authors"];
     [ObservableProperty] public partial string Search { get; set; } = "";
     [ObservableProperty] public partial string SelectedAuthor { get; set; } = "All authors";
@@ -61,17 +66,48 @@ public sealed partial class BrowserViewModel : ObservableObject, IDisposable
     private void SetSnapshot(SnapshotChanged message)
     {
         if (_disposed) return;
+        var folder = _repository?.Id == message.Repository?.Id ? SelectedNode?.Path : null;
         _snapshot = message.Snapshot; _repository = message.Repository;
         Authors = new[] { "All authors" }.Concat(_snapshot?.Commits.Select(c => c.AuthorName).Distinct().Order().ToArray() ?? []).ToArray();
         if (!Authors.Contains(SelectedAuthor)) SelectedAuthor = "All authors";
-        SelectedNode = null;
+        _updatingTree = true;
         TreeNodes = BuildTree(_snapshot?.Files ?? []);
+        SelectedNode = folder is null ? null : TreeNodes.FirstOrDefault(n => n.Path == folder);
+        UpdateVisibleTree();
+        _updatingTree = false;
         SelectedFile = null;
         _ = ApplyFilterAsync();
     }
     partial void OnSearchChanged(string value) => QueueFilter();
     partial void OnSelectedAuthorChanged(string value) => QueueFilter();
-    partial void OnSelectedNodeChanged(DirectoryNode? value) => QueueFilter();
+    partial void OnSelectedNodeChanged(DirectoryNode? value) { if (!_updatingTree) QueueFilter(); }
+    partial void OnFolderSearchChanged(string value) => UpdateVisibleTree();
+    [RelayCommand] private void SelectFolder(DirectoryNode? node) => SelectedNode = node;
+    private void UpdateVisibleTree()
+    {
+        var search = (FolderSearch ?? "").Trim();
+        if (search.Length == 0) { VisibleTreeNodes = TreeNodes; return; }
+        var ids = new HashSet<string>(StringComparer.Ordinal) { "root" };
+        foreach (var node in TreeNodes.Where(n => n.Path.Contains(search, StringComparison.OrdinalIgnoreCase)))
+        {
+            ids.Add(node.Id);
+            var path = node.Path;
+            while (path.Contains('/')) { path = path[..path.LastIndexOf('/')]; ids.Add("folder:" + path); }
+        }
+        VisibleTreeNodes = TreeNodes.Where(n => ids.Contains(n.Id)).ToArray();
+    }
+    [RelayCommand] private void ClearFilters()
+    {
+        _changingDates = true;
+        Search = ""; FolderSearch = ""; SelectedAuthor = "All authors"; SelectedNode = null;
+        _changingDates = false;
+        QueueFilter();
+    }
+    [RelayCommand] private void CancelQuery()
+    {
+        Interlocked.Increment(ref _queryVersion);
+        IsBusy = false;
+    }
     partial void OnModeChanged(FileViewMode value) => QueueFilter();
     partial void OnSelectedFileChanged(FileRow? value) => _messenger.Send(new FileSelected(_repository, _snapshot, value));
     partial void OnDatePresetChanged(string value)
@@ -129,6 +165,7 @@ public sealed partial class BrowserViewModel : ObservableObject, IDisposable
     private async Task ApplyFilterCoreAsync()
     {
         var version = Interlocked.Increment(ref _queryVersion);
+        IsBusy = false;
         var snapshot = _snapshot;
         if (snapshot is null) { Files = []; Activity = []; CommitCount = 0; ContributorCount = 0; return; }
         var now = _clock.GetUtcNow();
@@ -140,6 +177,7 @@ public sealed partial class BrowserViewModel : ObservableObject, IDisposable
         }
         if (from >= until) { QueryError = "Choose an end date on or after the start date."; Files = []; Activity = []; SelectedFile = null; CommitCount = 0; ContributorCount = 0; return; }
         QueryError = "";
+        IsBusy = true;
         var filter = new HistoryFilter(Mode, from, until, Search ?? "", SelectedAuthor == "All authors" ? "" : SelectedAuthor ?? "", SelectedNode?.Path ?? "");
         try
         {
@@ -172,6 +210,10 @@ public sealed partial class BrowserViewModel : ObservableObject, IDisposable
                 await _dispatcher.InvokeAsync(() => { if (!_disposed && version == _queryVersion) QueryError = ex.Message; }, _lifetime.Token);
             }
             catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        }
+        finally
+        {
+            if (!_disposed && version == _queryVersion) IsBusy = false;
         }
     }
     private static IReadOnlyList<DirectoryNode> BuildTree(IReadOnlyList<TreeFile> files)

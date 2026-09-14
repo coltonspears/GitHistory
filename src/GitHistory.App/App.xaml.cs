@@ -59,6 +59,8 @@ public partial class App : System.Windows.Application
             builder.Services.AddSingleton<IUiDispatcher, UiDispatcher>();
             builder.Services.AddSingleton<IClipboardService, ClipboardService>();
             builder.Services.AddSingleton<IDialogService, Services.DialogService>();
+            builder.Services.AddSingleton<IDesktopIntegration>(new DesktopIntegration(dataDirectory));
+            builder.Services.AddSingleton<IRepositoryProviderService>(_ => new RepositoryProviderService());
             builder.Services.AddSingleton<AppearanceService>(services => new(services.GetRequiredService<ILogger<AppearanceService>>(), dataDirectory));
             builder.Services.AddSingleton<IAppearanceService>(services => services.GetRequiredService<AppearanceService>());
             builder.Services.AddSingleton<GitRepositoryService>(services => new(dataDirectory, services.GetRequiredService<ILogger<GitRepositoryService>>()));
@@ -68,6 +70,9 @@ public partial class App : System.Windows.Application
             builder.Services.AddSingleton<BrowserViewModel>();
             builder.Services.AddSingleton<DetailsViewModel>();
             builder.Services.AddSingleton<WorkspaceViewModel>();
+            builder.Services.AddSingleton<SettingsViewModel>();
+            builder.Services.AddSingleton<RepositoryImportViewModel>();
+            builder.Services.AddSingleton<RepositoryActionsViewModel>();
             builder.Services.AddSingleton<MainViewModel>();
             builder.Services.AddSingleton<MainWindow>();
             _host = builder.Build();
@@ -104,7 +109,8 @@ public partial class App : System.Windows.Application
         _lifetime.Cancel();
         try
         {
-            if (_viewModel is not null) await Task.WhenAll(_viewModel.Workspace.ShutdownAsync(), _viewModel.Details.ShutdownAsync(), _viewModel.Browser.ShutdownAsync());
+            if (_viewModel is not null) await Task.WhenAll(_viewModel.Workspace.ShutdownAsync(), _viewModel.Details.ShutdownAsync(), _viewModel.Browser.ShutdownAsync(),
+                _viewModel.Import.ShutdownAsync(), _viewModel.Actions.ShutdownAsync());
             if (_viewModel?.IsInitialized == true) await _viewModel.SaveAsync();
             if (_host is not null) { await _host.StopAsync(TimeSpan.FromSeconds(5)); _host.Dispose(); }
         }

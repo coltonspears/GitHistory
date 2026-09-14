@@ -44,7 +44,11 @@ public sealed partial class DetailsViewModel : ObservableObject, IDisposable
         SelectedChange = History.FirstOrDefault(change => change == message.File?.LatestChange) ?? History.FirstOrDefault();
         if (SelectedChange is null) { CancelCurrent(); ++_version; DiffLines = []; DiffSummary = "Select a file to explore its history"; IsBusy = false; }
     }
-    partial void OnSelectedChangeChanged(FileChange? value) => _ = LoadDiffAsync();
+    partial void OnSelectedChangeChanged(FileChange? value)
+    {
+        _messenger.Send(new CommitSelected(_repository, value));
+        _ = LoadDiffAsync();
+    }
     [RelayCommand(AllowConcurrentExecutions = true)]
     private Task LoadDiffAsync()
     {

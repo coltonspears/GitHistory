@@ -12,6 +12,47 @@ public sealed class BrowserAndDetailsTests
     private static readonly DateTimeOffset Now = new(2026, 9, 14, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
+    public async Task Folder_search_keeps_ancestors_and_active_filter_without_triggering_a_new_file_query()
+    {
+        var messenger = new StrongReferenceMessenger();
+        using var browser = new BrowserViewModel(new HistoryQueryService(), messenger, new ImmediateDispatcher(), new FixedClock(), NullLogger<BrowserViewModel>.Instance);
+        messenger.Send(new SnapshotChanged(DemoData.Repository, DemoData.CreateSnapshot(now: Now)));
+        await browser.ApplyFilterCommand.ExecuteAsync(null);
+        var folder = browser.TreeNodes.Single(n => n.Path == "src/GitHistory.Core/Services");
+        browser.SelectFolderCommand.Execute(folder);
+        await browser.ApplyFilterCommand.ExecuteAsync(null);
+        var filtered = browser.Files;
+        browser.FolderSearch = "Behaviors";
+        Assert.Same(folder, browser.SelectedNode);
+        Assert.Same(filtered, browser.Files);
+        Assert.Contains(browser.VisibleTreeNodes, n => n.Id == "root");
+        Assert.Contains(browser.VisibleTreeNodes, n => n.Path == "src");
+        Assert.Contains(browser.VisibleTreeNodes, n => n.Path == "src/GitHistory.App/Behaviors");
+        Assert.DoesNotContain(browser.VisibleTreeNodes, n => n.Path == folder.Path);
+        browser.ClearFiltersCommand.Execute(null);
+        await browser.ApplyFilterCommand.ExecuteAsync(null);
+        Assert.Null(browser.SelectedNode);
+        Assert.Empty(browser.FolderSearch);
+        Assert.Equal(browser.TreeNodes.Count, browser.VisibleTreeNodes.Count);
+    }
+
+    [Fact]
+    public async Task Canceling_a_query_clears_loading_and_rejects_its_late_result()
+    {
+        var messenger = new StrongReferenceMessenger();
+        var dispatcher = new QueuedDispatcher();
+        using var browser = new BrowserViewModel(new HistoryQueryService(), messenger, dispatcher, new FixedClock(), NullLogger<BrowserViewModel>.Instance);
+        messenger.Send(new SnapshotChanged(DemoData.Repository, DemoData.CreateSnapshot(now: Now)));
+        var pending = await dispatcher.NextAsync();
+        Assert.True(browser.IsBusy);
+        browser.CancelQueryCommand.Execute(null);
+        Assert.False(browser.IsBusy);
+        pending.Execute();
+        await browser.ShutdownAsync();
+        Assert.Empty(browser.Files);
+    }
+
+    [Fact]
     public async Task Browser_discards_a_slow_old_query_after_a_new_filter_has_been_applied()
     {
         var messenger = new StrongReferenceMessenger();

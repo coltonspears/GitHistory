@@ -17,11 +17,20 @@ public sealed partial class WorkspaceViewModel(
     private CancellationTokenSource? _operation;
     private RepositoryInfo? _displayedRepository;
     private int _generation;
+    private int _catalogGeneration;
+    private int _selectionVersion;
     private int _connectionGeneration = -1;
     private bool _settingSelection;
+    private RepositoryInfo? _acceptedRepository;
     private bool _disposed;
     private Task? _shutdown;
     [ObservableProperty] public partial IReadOnlyList<RepositoryInfo> Repositories { get; set; } = [];
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasVisibleRepositories))]
+    public partial IReadOnlyList<RepositoryInfo> VisibleRepositories { get; set; } = [];
+    [ObservableProperty] public partial string RepositorySearch { get; set; } = "";
+    [ObservableProperty] public partial bool ShowOnlyPinned { get; set; }
+    [ObservableProperty] public partial IReadOnlyList<string> PinnedRepositoryIds { get; set; } = [];
+    [ObservableProperty] public partial bool RefreshOnOpen { get; set; } = true;
     [ObservableProperty] public partial RepositoryInfo? SelectedRepository { get; set; }
     [ObservableProperty] public partial IReadOnlyList<string> Branches { get; set; } = [];
     [ObservableProperty] public partial string? SelectedBranch { get; set; }
@@ -35,6 +44,8 @@ public sealed partial class WorkspaceViewModel(
     [ObservableProperty] public partial string LastUpdated { get; set; } = "Choose a repository to get started";
     public bool HasError => Error.Length > 0;
     public bool IsDemo => SelectedRepository?.IsDemo == true;
+    public bool HasVisibleRepositories => VisibleRepositories.Count > 0;
+    public bool SelectedIsPinned => SelectedRepository is not null && IsPinned(SelectedRepository);
     public IRelayCommand RefreshCancelCommand => CancelCommand;
 
     public Task InitializeAsync(UserSettings settings, CancellationToken cancellationToken = default) =>
@@ -43,40 +54,165 @@ public sealed partial class WorkspaceViewModel(
     private async Task InitializeCoreAsync(UserSettings settings, CancellationToken cancellationToken)
     {
         using var operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
-        var saved = await repositories.GetRepositoriesAsync(operation.Token);
-        operation.Token.ThrowIfCancellationRequested();
-        Repositories = saved;
-        var selected = saved.FirstOrDefault(r => r.Id == settings.SelectedRepositoryId) ?? saved.FirstOrDefault();
-        SetSelection(selected, selected?.Branches.Contains(settings.SelectedBranch ?? "") == true
-            ? settings.SelectedBranch : selected?.DefaultBranch);
-        await LoadSelectionAsync(operation.Token);
+        PinnedRepositoryIds = settings.PinnedRepositoryIds?.Distinct(StringComparer.Ordinal).ToArray() ?? [];
+        ShowOnlyPinned = settings.ShowOnlyPinned;
+        RefreshOnOpen = settings.RefreshOnOpen;
+        int selectionVersion = _selectionVersion;
+        int generation = _generation;
+        int catalogGeneration = ++_catalogGeneration;
+        IsBusy = true;
+        Status = "Loading workspaces";
+        ProgressText = "Reading saved repositories…";
+        try
+        {
+            var saved = await repositories.GetRepositoriesAsync(operation.Token);
+            operation.Token.ThrowIfCancellationRequested();
+            if (catalogGeneration != _catalogGeneration) return;
+            bool selectionUnchanged = selectionVersion == _selectionVersion;
+            string? selectedId = selectionUnchanged ? settings.SelectedRepositoryId : SelectedRepository?.Id;
+            string? branch = selectionUnchanged ? settings.SelectedBranch : SelectedBranch;
+            PublishRepositories(saved, selectedId, branch);
+            if (selectionUnchanged) await LoadSelectionAsync(operation.Token);
+        }
+        finally
+        {
+            if (IsCurrent(generation)) IsBusy = false;
+        }
     }
 
     partial void OnSelectedRepositoryChanged(RepositoryInfo? value)
     {
         OnPropertyChanged(nameof(IsDemo));
+        OnPropertyChanged(nameof(SelectedIsPinned));
         RefreshCommand.NotifyCanExecuteChanged();
         RemoveRepositoryCommand.NotifyCanExecuteChanged();
         if (_settingSelection || _disposed) return;
+        // A filtered or refreshed navigation control can temporarily clear its selection.
+        // The active workspace has its own lifetime and is not cleared by navigation visibility.
+        if (value is null && _acceptedRepository is not null && Repositories.Any(r => r.Id == _acceptedRepository.Id))
+        {
+            SetSelection(_acceptedRepository, SelectedBranch);
+            return;
+        }
+        ++_selectionVersion;
         SetSelection(value, value?.DefaultBranch);
         _ = LoadSelectionAsync(CancellationToken.None);
     }
 
     partial void OnSelectedBranchChanged(string? value)
     {
-        if (!_settingSelection && !_disposed) _ = LoadSelectionAsync(CancellationToken.None);
+        if (!_settingSelection && !_disposed)
+        {
+            ++_selectionVersion;
+            _ = LoadSelectionAsync(CancellationToken.None);
+        }
     }
 
     private void SetSelection(RepositoryInfo? repository, string? branch)
     {
+        bool wasSettingSelection = _settingSelection;
         _settingSelection = true;
         try
         {
+            _acceptedRepository = repository;
             SelectedRepository = repository;
             Branches = repository?.Branches ?? [];
             SelectedBranch = branch;
         }
-        finally { _settingSelection = false; }
+        finally { _settingSelection = wasSettingSelection; }
+    }
+
+    private void PublishRepositories(IReadOnlyList<RepositoryInfo> saved, string? selectedId, string? branch)
+    {
+        // Preserve reference identities when only the list instance changed. In particular,
+        // protect the entire ItemsSource publication from selection callbacks, not just its end.
+        var existing = Repositories.ToDictionary(r => r.Id, StringComparer.Ordinal);
+        var stable = saved.Select(repository => existing.TryGetValue(repository.Id, out var previous) && Equivalent(previous, repository)
+            ? previous : repository).ToArray();
+        var selected = stable.FirstOrDefault(r => r.Id == selectedId) ?? stable.FirstOrDefault();
+        bool wasSettingSelection = _settingSelection;
+        _settingSelection = true;
+        try
+        {
+            if (Repositories.Count != stable.Length || !Repositories.Zip(stable).All(pair => ReferenceEquals(pair.First, pair.Second)))
+                Repositories = stable;
+            UpdateVisibleRepositories();
+            SetSelection(selected, selected?.Branches.Contains(branch ?? "", StringComparer.Ordinal) == true ? branch : selected?.DefaultBranch);
+        }
+        finally { _settingSelection = wasSettingSelection; }
+    }
+
+    private static bool Equivalent(RepositoryInfo left, RepositoryInfo right) =>
+        left.Id == right.Id && left.Name == right.Name && left.RemoteUrl == right.RemoteUrl &&
+        left.DefaultBranch == right.DefaultBranch && left.IsDemo == right.IsDemo && left.Branches.SequenceEqual(right.Branches, StringComparer.Ordinal);
+
+    partial void OnRepositorySearchChanged(string value) => UpdateVisibleRepositories();
+    partial void OnShowOnlyPinnedChanged(bool value) => UpdateVisibleRepositories();
+    partial void OnPinnedRepositoryIdsChanged(IReadOnlyList<string> value)
+    {
+        OnPropertyChanged(nameof(SelectedIsPinned));
+        UpdateVisibleRepositories();
+    }
+
+    public bool IsPinned(RepositoryInfo? repository) => repository is not null && PinnedRepositoryIds.Contains(repository.Id, StringComparer.Ordinal);
+
+    [RelayCommand]
+    private void SelectRepository(RepositoryInfo? repository)
+    {
+        if (_disposed || repository is null || repository.Id == _acceptedRepository?.Id) return;
+        var saved = Repositories.FirstOrDefault(item => item.Id == repository.Id);
+        if (saved is not null) SelectedRepository = saved;
+    }
+
+    [RelayCommand]
+    private void TogglePin(RepositoryInfo? repository)
+    {
+        repository ??= _acceptedRepository;
+        if (_disposed || repository is null) return;
+        PinnedRepositoryIds = IsPinned(repository)
+            ? PinnedRepositoryIds.Where(id => id != repository.Id).ToArray()
+            : [.. PinnedRepositoryIds, repository.Id];
+    }
+
+    private void UpdateVisibleRepositories()
+    {
+        string search = (RepositorySearch ?? "").Trim();
+        var visible = Repositories.Where(repository => (!ShowOnlyPinned || IsPinned(repository)) &&
+                (repository.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || repository.RemoteUrl.Contains(search, StringComparison.OrdinalIgnoreCase)))
+            .OrderByDescending(IsPinned).ThenBy(repository => repository.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+        if (VisibleRepositories.Count == visible.Length && VisibleRepositories.Zip(visible).All(pair => ReferenceEquals(pair.First, pair.Second))) return;
+        var selected = _acceptedRepository;
+        var branch = SelectedBranch;
+        bool wasSettingSelection = _settingSelection;
+        _settingSelection = true;
+        try
+        {
+            VisibleRepositories = visible;
+            SetSelection(selected, branch);
+        }
+        finally { _settingSelection = wasSettingSelection; }
+    }
+
+    public Task ReloadRepositoriesAsync(string? preferredRepositoryId = null, CancellationToken cancellationToken = default) =>
+        Track(() => ReloadRepositoriesCoreAsync(preferredRepositoryId, cancellationToken));
+
+    private async Task ReloadRepositoriesCoreAsync(string? preferredRepositoryId, CancellationToken cancellationToken)
+    {
+        using var operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
+        int catalogGeneration = ++_catalogGeneration;
+        int selectionVersion = _selectionVersion;
+        var saved = await repositories.GetRepositoriesAsync(operation.Token);
+        operation.Token.ThrowIfCancellationRequested();
+        if (_disposed || catalogGeneration != _catalogGeneration) return;
+        string? previousId = _acceptedRepository?.Id;
+        string? previousBranch = SelectedBranch;
+        string? selectedId = selectionVersion == _selectionVersion ? preferredRepositoryId ?? previousId : previousId;
+        PublishRepositories(saved, selectedId, selectedId == previousId ? previousBranch : null);
+        if (SelectedRepository?.Id != previousId || SelectedBranch != previousBranch)
+        {
+            ++_selectionVersion;
+            await LoadSelectionAsync(operation.Token);
+        }
     }
 
     private bool CanRefresh() => !_disposed && SelectedRepository is not null && !IsBusy;
@@ -99,7 +235,7 @@ public sealed partial class WorkspaceViewModel(
         }
     }
     [RelayCommand(CanExecute = nameof(CanRefresh))]
-    private Task RefreshAsync(CancellationToken cancellationToken) => LoadSelectionAsync(cancellationToken);
+    private Task RefreshAsync(CancellationToken cancellationToken) => LoadSelectionAsync(cancellationToken, forceRefresh: true);
 
     [RelayCommand(CanExecute = nameof(CanConnect))]
     private Task ConnectAsync(CancellationToken cancellationToken) => Track(() => ConnectCoreAsync(cancellationToken));
@@ -117,10 +253,12 @@ public sealed partial class WorkspaceViewModel(
         {
             var result = await repositories.ConnectAsync(RemoteUrl.Trim(), Progress(generation), operation.Token);
             operation.Token.ThrowIfCancellationRequested();
+            int catalogGeneration = ++_catalogGeneration;
             var saved = await repositories.GetRepositoriesAsync(operation.Token);
             if (!IsCurrent(generation, operation.Token)) return;
             connected = result;
-            Repositories = saved;
+            if (catalogGeneration == _catalogGeneration) PublishRepositories(saved, _acceptedRepository?.Id, SelectedBranch);
+            if (!IsCurrent(generation, operation.Token)) return;
             IsConnectOpen = false;
             RemoteUrl = "";
         }
@@ -134,14 +272,17 @@ public sealed partial class WorkspaceViewModel(
 
         if (connected is not null && IsCurrent(generation, cancellationToken))
         {
+            connected = Repositories.FirstOrDefault(repository => repository.Id == connected.Id) ?? connected;
+            ++_selectionVersion;
             SetSelection(connected, connected.DefaultBranch);
             await LoadSelectionAsync(cancellationToken);
         }
     }
 
-    private Task LoadSelectionAsync(CancellationToken cancellationToken) => Track(() => LoadSelectionCoreAsync(cancellationToken));
+    private Task LoadSelectionAsync(CancellationToken cancellationToken, bool forceRefresh = false) =>
+        Track(() => LoadSelectionCoreAsync(cancellationToken, forceRefresh));
 
-    private async Task LoadSelectionCoreAsync(CancellationToken cancellationToken)
+    private async Task LoadSelectionCoreAsync(CancellationToken cancellationToken, bool forceRefresh)
     {
         Cancel();
         var generation = ++_generation;
@@ -176,15 +317,22 @@ public sealed partial class WorkspaceViewModel(
             {
                 messenger.Send(new SnapshotChanged(repository, cached));
                 LastUpdated = $"Cached · {cached.RefreshedAt.LocalDateTime:g}";
+                if (!forceRefresh && !RefreshOnOpen)
+                {
+                    Status = repository.IsDemo ? "Demo workspace · sample data" : "Cached history · refresh on open is off";
+                    ProgressText = $"{cached.Commits.Count:N0} commits indexed · {cached.Files.Count:N0} current files";
+                    return;
+                }
             }
             Status = repository.IsDemo ? "Opening demo" : "Refreshing remote";
             var snapshot = await repositories.RefreshAsync(repository, branch, Progress(generation), operation.Token);
             operation.Token.ThrowIfCancellationRequested();
+            int catalogGeneration = ++_catalogGeneration;
             var saved = await repositories.GetRepositoriesAsync(operation.Token);
             if (!IsCurrent(generation, operation.Token)) return;
-            var updated = saved.FirstOrDefault(item => item.Id == repository.Id) ?? repository;
-            Repositories = saved;
-            SetSelection(updated, branch);
+            if (catalogGeneration == _catalogGeneration) PublishRepositories(saved, repository.Id, branch);
+            if (!IsCurrent(generation, operation.Token)) return;
+            var updated = SelectedRepository ?? repository;
             _displayedRepository = updated;
             messenger.Send(new SnapshotChanged(updated, snapshot));
             Status = updated.IsDemo ? "Demo workspace · sample data" : "Up to date";
@@ -248,8 +396,9 @@ public sealed partial class WorkspaceViewModel(
     private async Task RemoveRepositoryCoreAsync(CancellationToken cancellationToken)
     {
         var selected = SelectedRepository;
+        int selectionVersion = _selectionVersion;
         if (selected is null || !await dialogs.ConfirmAsync("Remove repository", $"Remove {selected.Name} from your saved repositories?")) return;
-        if (_disposed || cancellationToken.IsCancellationRequested) return;
+        if (_disposed || cancellationToken.IsCancellationRequested || selectionVersion != _selectionVersion) return;
         Cancel();
         var generation = ++_generation;
         using var operation = BeginOperation(cancellationToken);
@@ -260,17 +409,19 @@ public sealed partial class WorkspaceViewModel(
         {
             await repositories.RemoveAsync(selected, operation.Token);
             operation.Token.ThrowIfCancellationRequested();
+            int catalogGeneration = ++_catalogGeneration;
             var result = await repositories.GetRepositoriesAsync(operation.Token);
-            if (IsCurrent(generation, operation.Token)) saved = result;
+            if (IsCurrent(generation, operation.Token)) saved = catalogGeneration == _catalogGeneration ? result : Repositories;
         }
         catch (OperationCanceledException) { if (IsCurrent(generation)) Status = "Removal canceled"; }
         catch (Exception ex) { if (IsCurrent(generation)) SetError(ex, "Could not remove repository"); }
         finally { FinishOperation(operation, generation); }
         if (saved is not null && IsCurrent(generation, cancellationToken))
         {
-            Repositories = saved;
+            PinnedRepositoryIds = PinnedRepositoryIds.Where(id => id != selected.Id).ToArray();
             var next = saved.FirstOrDefault();
-            SetSelection(next, next?.DefaultBranch);
+            PublishRepositories(saved, next?.Id, next?.DefaultBranch);
+            ++_selectionVersion;
             await LoadSelectionAsync(cancellationToken);
         }
     }

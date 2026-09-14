@@ -14,9 +14,36 @@ Built with **.NET 10**, **DevExpress WPF 26.1.4**, and **CommunityToolkit.Mvvm**
 4. Use **Recent Changes** for a date range or **All Files** for the current tree ranked by its last branch change. Search paths, commit subjects, authors, and hashes; filter by author or folder.
 5. Select a file, choose a history entry, and read its native inline diff. Copy the path or commit SHA when needed.
 
-The activity chart and range selector narrow the date window. The file grid supports column sizing, reordering, sorting, grouping, and filtering. Dock the history and diff panes to suit your workflow. Theme, selected repository, selected branch, view mode, pane layout, and file-grid layout survive normal shutdown; **Reset Layout** restores the defaults.
+The activity chart and range selector narrow the date window. The file grid supports column sizing, reordering, sorting, grouping, and filtering, with a dedicated **Folder** column and full-path tooltips. Dock the history and diff panes to suit your workflow. Theme, selected repository, selected branch, view mode, pane layout, and file-grid layout survive normal shutdown; **Reset Layout** restores the defaults.
 
 ![All current files and their history](docs/screenshots/all-files.png)
+
+## Workspaces, private repositories, and local tools
+
+- Search workspaces by name or remote URL. Pin favorites and switch **Pinned** on for a compact list. The active workspace remains loaded when a search hides its navigation row.
+- Search the folder tree without losing the active folder filter. Matching folders retain their ancestors; **Clear filters** resets the folder, author, and file search together.
+- Choose **Import repositories** to discover GitHub or Azure DevOps repositories available to your account, including private repositories. Search the results, select several, and import them together. Successful imports remain saved if another repository fails or you cancel. Importing keeps the active workspace selected.
+- Use **Settings** to choose a theme and default date range, enable or disable refresh on open, hide the activity summary, control automatic PR lookups, and configure Cursor's executable. Settings, pinned workspaces, and linked checkout folders persist on normal shutdown.
+
+![Settings](docs/screenshots/settings.png)
+
+GitHub discovery uses an existing `gh auth login` session; Azure DevOps discovery uses `az login` and an organization name or URL. An optional API token stays in process memory. Git connections and fetches use your existing Git Credential Manager or SSH credentials separately. See [private-repository setup and provider support](docs/providers.md).
+
+![Import repositories](docs/screenshots/import.png)
+
+Right-click a file or history entry for contextual actions:
+
+| Action | Behavior |
+|---|---|
+| Open in Explorer | Selects the file in a linked local checkout; deleted files open the nearest existing parent folder |
+| Open in Cursor | Opens the linked checkout and the selected file, when present locally |
+| Copy path | Copies the exact repository-relative path |
+| View file / commit in browser | Opens the corresponding GitHub or Azure DevOps revision; deleted files use the parent revision |
+| Find associated pull requests | Loads provider PR titles, authors, state, and links for the selected commit |
+
+Use **Link local checkout** to choose an existing working repository. GitHistory's bare history cache contains no working files and is not opened as a checkout. The local checkout may be on a different branch or contain edits; Explorer and Cursor open its existing contents. GitHistory does not modify or synchronize it. Repository-level actions also open the source control page, copy its remote URL, or open the linked folder.
+
+PR references inferred from merge commit messages are labeled **unverified** until metadata is loaded. Network, indexing, filtering, diff, import, and PR operations show loading state in their affected panes; cancellation remains available. The command palette includes import, settings, pinned workspace, browser, and local-tool commands.
 
 ## Run locally
 
@@ -59,7 +86,7 @@ GitHistory answers **when the selected branch changed**. It walks that branch's 
 - Displayed text diffs are bounded to 2 MiB and 20,000 lines, with a visible truncation notice.
 - Hover over a diff line to read and copy its full text in a scrollable tooltip, including lines wider than the grid.
 
-Refresh runs when opening/selecting a repository or branch, or when requested manually. Cached results remain available if a fetch or index fails or is canceled. A refresh only replaces the completed snapshot after indexing succeeds. Force pushes rebuild the derived snapshot against the new branch tip. Previously cached branches remain selectable after remote deletion; selecting one shows the retained history and an explicit refresh failure.
+Refresh runs when opening/selecting a repository or branch, or when requested manually. Disable **Refresh on open** in Settings to prefer a completed cache; a branch without a cache still fetches once. Cached results remain available if a fetch or index fails or is canceled. A refresh only replaces the completed snapshot after indexing succeeds. Force pushes rebuild the derived snapshot against the new branch tip. Previously cached branches remain selectable after remote deletion; selecting one shows the retained history and an explicit refresh failure.
 
 ## Controls and architecture
 
@@ -96,7 +123,7 @@ Application data lives under `%LOCALAPPDATA%\GitHistory`: bare repository caches
 
 Git is invoked directly using structured process arguments. Paths are parsed as NUL-delimited records and remain case-sensitive, including on Windows. External diff tools and text-conversion programs are disabled. Cached snapshots are published atomically, and canceled processes are terminated with their process trees.
 
-There is no background polling, telemetry, source editing, checkout, commit, push, or branch-comparison workflow.
+There is no background polling, telemetry, source editing, checkout, commit, push, or branch-comparison workflow. Local-tool actions open an existing checkout in the user's chosen application.
 
 ## Tests and screenshots
 
@@ -109,7 +136,7 @@ The opt-in screenshot command starts an isolated demo workspace and renders the 
 
 Tests cover first-parent merge attribution, clock skew, rename and delete/re-add history, unusual filenames, binary/submodule/LFS entries, force pushes, cancellation, cache recovery, query behavior, stale UI results, and architecture boundaries. See [performance measurements](docs/performance.md) for the reproducible 100,000-commit benchmark.
 
-See the [delivery verification notes](docs/validation.md) for the tested publish, screenshots, checks, and remaining manual validation.
+See the [workspace update notes](docs/navigation-update.md) for the selection fix and new features, and the [delivery verification notes](docs/validation.md) for the tested publish, screenshots, checks, and remaining manual validation.
 
 GitHub Actions runs Windows restore, tests, and build. Set the optional `DEVEXPRESS_LICENSE` repository secret to register the build agent; never place a license in tracked configuration.
 

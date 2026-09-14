@@ -98,6 +98,60 @@ public sealed class MainViewModelTests
         Assert.True(fixture.Workspace.IsConnectOpen);
     }
 
+    [Fact]
+    public async Task Settings_and_pins_survive_save_without_serializing_import_credentials()
+    {
+        await using var fixture = new Fixture();
+        await fixture.Main.InitializeAsync();
+        fixture.Main.Settings.DefaultDatePreset = "30 days";
+        fixture.Main.Settings.RefreshOnOpen = false;
+        fixture.Main.Settings.ShowActivityChart = false;
+        fixture.Main.Settings.AutoLoadPullRequests = true;
+        fixture.Main.Settings.CursorCommand = "C:\\Tools\\Cursor.exe";
+        fixture.Main.Import.AccessToken = "session-secret-not-for-settings";
+        fixture.Workspace.TogglePinCommand.Execute(Fixture.Repository);
+        fixture.Workspace.ShowOnlyPinned = true;
+        await fixture.Main.SaveAsync();
+        var saved = Assert.Single(fixture.Settings.Writes);
+        Assert.Equal("30 days", saved.DefaultDatePreset);
+        Assert.Equal("30 days", fixture.Browser.DatePreset);
+        Assert.False(saved.RefreshOnOpen);
+        Assert.False(fixture.Workspace.RefreshOnOpen);
+        Assert.False(saved.ShowActivityChart);
+        Assert.True(saved.AutoLoadPullRequests);
+        Assert.Equal("C:\\Tools\\Cursor.exe", saved.CursorCommand);
+        Assert.NotNull(saved.PinnedRepositoryIds);
+        Assert.Equal(Fixture.Repository.Id, Assert.Single(saved.PinnedRepositoryIds));
+        Assert.True(saved.ShowOnlyPinned);
+        Assert.DoesNotContain("session-secret", System.Text.Json.JsonSerializer.Serialize(saved), StringComparison.Ordinal);
+        fixture.Main.OpenSettingsCommand.Execute(null);
+        Assert.True(fixture.Main.Settings.IsOpen);
+        fixture.Main.OpenImportCommand.Execute(null);
+        Assert.False(fixture.Main.Settings.IsOpen);
+        Assert.True(fixture.Main.Import.IsOpen);
+        fixture.Main.ClosePaletteCommand.Execute(null);
+        Assert.False(fixture.Main.Import.IsOpen);
+        Assert.Empty(fixture.Main.Import.AccessToken);
+    }
+
+    [Fact]
+    public async Task Clearing_editor_values_does_not_break_navigation_search_or_import()
+    {
+        await using var fixture = new Fixture();
+        await fixture.Main.InitializeAsync();
+        fixture.Workspace.RepositorySearch = null!;
+        fixture.Browser.FolderSearch = null!;
+        fixture.Main.PaletteSearch = null!;
+        fixture.Main.Import.Search = null!;
+        fixture.Main.Import.Organization = null!;
+        fixture.Main.Import.Project = null!;
+        fixture.Main.Import.AccessToken = null!;
+        await fixture.Main.Import.DiscoverCommand.ExecuteAsync(null);
+        Assert.Single(fixture.Workspace.VisibleRepositories);
+        Assert.NotEmpty(fixture.Main.PaletteItems);
+        Assert.Empty(fixture.Main.Import.Error);
+    }
+
     private sealed class Fixture : IAsyncDisposable
     {
         public static RepositoryInfo Repository { get; } = new("saved", "Saved repository", "https://example.com/saved.git", "main", ["main", "develop"]);
@@ -117,13 +171,18 @@ public sealed class MainViewModelTests
             Workspace = new WorkspaceViewModel(Repositories, messenger, dispatcher, new Dialogs(), NullLogger<WorkspaceViewModel>.Instance);
             Browser = new BrowserViewModel(queries, messenger, dispatcher, TimeProvider.System, NullLogger<BrowserViewModel>.Instance);
             Details = new DetailsViewModel(Repositories, queries, messenger, new Clipboard(), NullLogger<DetailsViewModel>.Instance);
-            Main = new MainViewModel(Workspace, Browser, Details, Settings, Appearance);
+            var desktop = new Desktop();
+            var preferences = new SettingsViewModel(Appearance, desktop);
+            var providers = new Providers();
+            var import = new RepositoryImportViewModel(providers, Repositories, Workspace, dispatcher);
+            var actions = new RepositoryActionsViewModel(desktop, new Clipboard(), providers, preferences, messenger);
+            Main = new MainViewModel(Workspace, Browser, Details, Settings, Appearance, preferences, import, actions);
         }
 
         public static BranchSnapshot Snapshot(RepositoryInfo repository, string branch) =>
             new(repository.Id, branch, "tip", DateTimeOffset.Now, [], [], []);
 
-        public async ValueTask DisposeAsync() => await Task.WhenAll(Workspace.ShutdownAsync(), Browser.ShutdownAsync(), Details.ShutdownAsync());
+        public async ValueTask DisposeAsync() => await Task.WhenAll(Workspace.ShutdownAsync(), Browser.ShutdownAsync(), Details.ShutdownAsync(), Main.Import.ShutdownAsync(), Main.Actions.ShutdownAsync());
     }
 
     private sealed class SettingsStore : IUserSettingsStore
@@ -180,5 +239,18 @@ public sealed class MainViewModelTests
     private sealed class Clipboard : IClipboardService
     {
         public void SetText(string text) { }
+    }
+    private sealed class Providers : IRepositoryProviderService
+    {
+        public Task<IReadOnlyList<RemoteRepository>> DiscoverAsync(RepositoryImportRequest request, IProgress<OperationProgress>? progress, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<RemoteRepository>>([]);
+        public Task<IReadOnlyList<PullRequestInfo>> GetPullRequestsAsync(RepositoryInfo repository, string commitSha, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<PullRequestInfo>>([]);
+    }
+    private sealed class Desktop : IDesktopIntegration
+    {
+        public Task<string?> PickFolderAsync(string? initialFolder, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+        public void OpenBrowser(string url) { }
+        public Task OpenExplorerAsync(string localFolder, string? repositoryPath, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task OpenCursorAsync(string localFolder, string? repositoryPath, string executable, CancellationToken cancellationToken) => Task.CompletedTask;
+        public void OpenDataFolder() { }
     }
 }

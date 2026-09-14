@@ -42,4 +42,7 @@ public sealed record DiffLine(int? OldLine, int? NewLine, string Text, DiffLineK
     public string Marker => Kind switch { DiffLineKind.Added => "+", DiffLineKind.Deleted => "−", _ => " " };
 }
 public sealed record DiffResult(IReadOnlyList<DiffLine> Lines, string Summary, bool IsTruncated = false, bool IsBinary = false);
-public sealed record UserSettings(string? SelectedRepositoryId = null, string? SelectedBranch = null, string Theme = "Dark", string ViewMode = "RecentChanges");
+public sealed record UserSettings(string? SelectedRepositoryId = null, string? SelectedBranch = null, string Theme = "Dark", string ViewMode = "RecentChanges",
+    string[]? PinnedRepositoryIds = null, bool ShowOnlyPinned = false, bool RefreshOnOpen = true,
+    string DefaultDatePreset = "7 days", bool ShowActivityChart = true, bool AutoLoadPullRequests = false,
+    string CursorCommand = "cursor", IReadOnlyDictionary<string, string>? LocalFolders = null);

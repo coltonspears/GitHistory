@@ -48,6 +48,8 @@ Remove-Item Env:GITHISTORY_TEST_REMOTE
 
 This test only reads the supplied remote. Git Credential Manager, the user's Git configuration, `core.sshCommand`, `GIT_SSH`, and `GIT_SSH_COMMAND` remain available to the production runner. For SSH, configure a working key or key agent and establish host trust in a terminal first; operations are cancellable and do not collect credentials in app settings.
 
+After the initial push, the same production smoke test also passed against the **private** `https://github.com/coltonspears/GitHistory.git` remote using existing local Git credentials. It fetched `main` at `1392249088ff83fb1c818b1d38984f9448dd9dcb` (one first-parent commit, 71 files), loaded a native diff, and reopened its offline cache. Test time was approximately five seconds. No credentials were added to application settings. SSH authentication remains untested on this machine.
+
 ## Correctness coverage
 
 Twenty-six infrastructure test cases passed using real local Git repositories and focused parser/settings tests. They cover:

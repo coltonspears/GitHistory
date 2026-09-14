@@ -16,6 +16,7 @@ Verified on September 14, 2026 on the Windows development machine described in [
 | Runtime diagnostics | Clean start and shutdown with no application warnings or fatal errors in that run |
 | Rendering density | Actual WPF renders at 100%, 150%, and 200%; screenshots visually inspected |
 | Public HTTPS repository | Production service fetched ColtonStack, loaded a native diff, and reopened its completed cache |
+| Private HTTPS repository | The same service fetched the new private GitHistory remote using existing Git credentials, loaded a diff, and reopened the cache |
 | Large-history performance | Reproducible 100,000-commit / 10,000-file benchmark; measured separately from internet fetch latency |
 
 The normal regression suite includes real Git fixture repositories and WPF-independent tests for queries, view models, cancellation, stale results, offline recovery, and architecture boundaries. The benchmark and network smoke test are opt-in; see [their commands and results](performance.md).
@@ -28,7 +29,7 @@ dotnet publish src/GitHistory.App -c Release -r win-x64 --self-contained true -o
 & ./artifacts/publish/win-x64/GitHistory.App.exe --capture-screenshots artifacts/published-ui
 ```
 
-Physical monitor transitions, interactive drag-and-drop docking, a complete keyboard-only walkthrough, and private HTTPS/SSH authentication still need manual verification in the user's environment. Programmatic shortcut and layout checks do not replace those interactions. The self-contained executable was tested on the development machine, not a clean Windows VM.
+Physical monitor transitions, interactive drag-and-drop docking, a complete keyboard-only walkthrough, and SSH authentication still need manual verification in the user's environment. Programmatic shortcut and layout checks do not replace those interactions. The self-contained executable was tested on the development machine, not a clean Windows VM.
 
 No local DevExpress v26.1 key was registered during verification. Its evaluation diagnostics remain enabled. Register the user's trial or developer key as described in the [README](../README.md#run-locally); keys and published binaries are excluded from Git.
 

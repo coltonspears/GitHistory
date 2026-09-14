@@ -1,0 +1,99 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+                    xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+                    xmlns:cv="clr-namespace:GitHistory.App.Converters">
+    <BooleanToVisibilityConverter x:Key="BoolVisibility"/>
+    <cv:InverseBooleanToVisibilityConverter x:Key="InverseVisibility"/>
+    <cv:EnumSelectionConverter x:Key="EnumSelection"/>
+    <cv:NoModalOpenConverter x:Key="NoModalOpen"/>
+    <cv:EmptyToVisibilityConverter x:Key="EmptyVisibility"/>
+    <cv:PaletteShortcutConverter x:Key="PaletteShortcut"/>
+    <cv:DiffBodyConverter x:Key="DiffBody"/>
+    <cv:ActivityExtentConverter x:Key="ActivityExtent"/>
+    <Style TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style x:Key="Eyebrow" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+    </Style>
+    <Style x:Key="Mono" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Cascadia Code, Consolas"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style x:Key="ActionButton" TargetType="dx:SimpleButton">
+        <Setter Property="MinHeight" Value="34"/>
+        <Setter Property="Padding" Value="13,6"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style x:Key="PrimaryButton" TargetType="dx:SimpleButton" BasedOn="{StaticResource ActionButton}">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style x:Key="QuietButton" TargetType="dx:SimpleButton" BasedOn="{StaticResource ActionButton}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+    </Style>
+    <Style x:Key="FilterEditor" TargetType="dxe:TextEdit">
+        <Setter Property="MinHeight" Value="34"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style x:Key="ViewTab" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Padding" Value="17,12"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="TabBorder" BorderThickness="0,0,0,2" BorderBrush="Transparent" Background="Transparent" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource ElevatedBrush}"/></Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource ElevatedBrush}"/></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="ChangeBadge" TargetType="Border">
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="7,3"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Background" Value="{DynamicResource ModifiedBackgroundBrush}"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Value}" Value="Added"><Setter Property="Background" Value="{DynamicResource AddedBackgroundBrush}"/></DataTrigger>
+            <DataTrigger Binding="{Binding Value}" Value="Deleted"><Setter Property="Background" Value="{DynamicResource DeletedBackgroundBrush}"/></DataTrigger>
+            <DataTrigger Binding="{Binding Value}" Value="Renamed"><Setter Property="Background" Value="{DynamicResource RenamedBackgroundBrush}"/></DataTrigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="ChangeLabel" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource ModifiedBrush}"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Value}" Value="Added"><Setter Property="Foreground" Value="{DynamicResource AddedBrush}"/></DataTrigger>
+            <DataTrigger Binding="{Binding Value}" Value="Deleted"><Setter Property="Foreground" Value="{DynamicResource DeletedBrush}"/></DataTrigger>
+            <DataTrigger Binding="{Binding Value}" Value="Renamed"><Setter Property="Foreground" Value="{DynamicResource RenamedBrush}"/></DataTrigger>
+        </Style.Triggers>
+    </Style>
+</ResourceDictionary>

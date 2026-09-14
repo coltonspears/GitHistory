@@ -1,0 +1,7 @@
+# Keep application operations asynchronous and explicitly composed.
+P:System.Threading.Tasks.Task`1.Result; Await asynchronous work instead of blocking the UI thread.
+M:System.Threading.Tasks.Task.Wait; Await asynchronous work instead of blocking.
+M:System.Threading.Thread.Sleep(System.Int32); Use asynchronous cancellation-aware operations.
+M:System.Reflection.Assembly.GetTypes; Register application features explicitly in the composition root.
+M:System.Activator.CreateInstance(System.Type); Use constructor injection and explicit registration.
+M:System.Type.GetProperties; Use typed models and source-generated serialization.

@@ -1,0 +1,18 @@
+Use the standard NuGet.org Feed URL for DevExpress v25.1+
+https://api.nuget.org/v3/index.json
+
+
+https://www.devexpress.com/subscriptions/whats-new/#wpf
+AI Agent Skills
+v26.1 introduces Agent Skills for DevExpress WPF Controls, structured knowledge packages that equip AI coding assistants with accurate, product-specific expertise for WPF controls.
+
+Each skill defines the correct NuGet packages, entry-point classes, API patterns, XAML markup, and configuration for a specific WPF control or usage scenario. AI assistants use this knowledge to generate accurate WPF code from the first prompt.
+
+Skills follow the open Agent Skills standard and work with Claude Code, GitHub Copilot (CLI, VS Code, Visual Studio, JetBrains Rider), Cursor, and Gemini CLI.
+
+Install Skills
+AI Agent Skills
+Install skills for WPF Controls from the DevExpress Agent Skills GitHub repository.
+
+
+https://github.com/DevExpress/agent-skills/tree/main/plugins/dx-wpf

@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+.vs/
+artifacts/
+TestResults/
+*.user
+*.suo
+DevExpress_License.txt
+*.db
+*.db-shm
+*.db-wal

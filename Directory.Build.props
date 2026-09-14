@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>14.0</LangVersion>
+    <Deterministic>true</Deterministic>
+    <WarningsAsErrors>$(WarningsAsErrors);RS0030</WarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'GitHistory.Tests'">
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
+  </ItemGroup>
+</Project>

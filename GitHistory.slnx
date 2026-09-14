@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GitHistory.App/GitHistory.App.csproj" />
+    <Project Path="src/GitHistory.Core/GitHistory.Core.csproj" />
+    <Project Path="src/GitHistory.Infrastructure/GitHistory.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GitHistory.Tests/GitHistory.Tests.csproj" />
+  </Folder>
+</Solution>

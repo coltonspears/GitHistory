@@ -1,0 +1,23 @@
+name: Build and test
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore GitHistory.slnx
+      - name: Test domain, view models, and real Git fixtures
+        run: dotnet test tests/GitHistory.Tests -c Release --no-restore --logger trx
+      - name: Build WPF
+        env:
+          DevExpress_License: ${{ secrets.DEVEXPRESS_LICENSE }}
+        run: dotnet build GitHistory.slnx -c Release --no-restore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: '**/TestResults/*.trx'

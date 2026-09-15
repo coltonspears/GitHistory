@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Description>Reusable native WPF controls and application themes, with no third-party dependencies.</Description>
+  </PropertyGroup>
+</Project>

@@ -13,8 +13,6 @@ jobs:
       - name: Test domain, view models, and real Git fixtures
         run: dotnet test tests/GitHistory.Tests -c Release --no-restore --logger trx
       - name: Build WPF
-        env:
-          DevExpress_License: ${{ secrets.DEVEXPRESS_LICENSE }}
         run: dotnet build GitHistory.slnx -c Release --no-restore
       - uses: actions/upload-artifact@v4
         if: always()

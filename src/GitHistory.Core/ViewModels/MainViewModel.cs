@@ -62,7 +62,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Workspace.PinnedRepositoryIds.Count == 0 ? null : Workspace.PinnedRepositoryIds.ToArray(), Workspace.ShowOnlyPinned,
         Settings.RefreshOnOpen, Settings.DefaultDatePreset, Settings.ShowActivityChart, Settings.AutoLoadPullRequests,
         Settings.CursorCommand, Actions.LocalFolders.Count == 0 ? null : Actions.LocalFolders), cancellationToken);
-    [RelayCommand] private void ToggleTheme() => Theme = Theme == "Dark" ? "Light" : "Dark";
+    [RelayCommand] private void ToggleTheme() => Settings.CycleTheme();
     [RelayCommand] private void ResetLayout() => appearance.ResetLayout();
     [RelayCommand] private void OpenSettings() { ClosePalette(); Settings.IsOpen = true; }
     [RelayCommand] private void OpenImport() { ClosePalette(); Import.IsOpen = true; }
@@ -84,7 +84,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             new("refresh", "Refresh repository", "Fetch the latest branch history · F5"),
             new("recent", "Recent changes", "See files touched during a selected period"),
             new("all", "All files", "Explore the current tree by its last change"),
-            new("theme", "Toggle dark / light theme", "Switch the workspace appearance · Ctrl+D"),
+            new("theme", "Cycle theme", "Choose Dark, Light, Classic, or Dusk · Ctrl+D"),
             new("layout", "Reset workspace layout", "Restore default panes and file columns")];
         PaletteItems = commands.Concat(Workspace.Repositories.Select(r => new PaletteItem($"repo:{r.Id}", r.Name, r.IsDemo ? "Open sample workspace" : r.RemoteUrl)))
             .Where(p => p.Title.Contains(search, StringComparison.OrdinalIgnoreCase) || p.Description.Contains(search, StringComparison.OrdinalIgnoreCase)).ToArray();

@@ -75,8 +75,88 @@ public sealed class MainViewModelTests
         fixture.Browser.Mode = FileViewMode.RecentChanges;
         await fixture.Main.SaveAsync();
 
-        Assert.Equal(new UserSettings(Fixture.Repository.Id, "develop", "Dark", "RecentChanges"),
+        Assert.Equal(new UserSettings(Fixture.Repository.Id, "develop", "Classic", "RecentChanges"),
             Assert.Single(fixture.Settings.Writes));
+    }
+
+    [Theory]
+    [InlineData("Dark", "Dark")]
+    [InlineData("Light", "Light")]
+    [InlineData("Classic", "Classic")]
+    [InlineData("Dusk", "Dusk")]
+    [InlineData("dUsK", "Dusk")]
+    [InlineData("unknown-palette", "Dark")]
+    [InlineData(null, "Dark")]
+    public async Task Saved_theme_is_restored_canonically_and_survives_saving(string? persistedTheme, string expected)
+    {
+        await using var fixture = new Fixture();
+        fixture.Settings.Load = _ => Task.FromResult(fixture.Settings.Existing with { Theme = persistedTheme! });
+
+        await fixture.Main.InitializeAsync();
+        await fixture.Main.SaveAsync();
+
+        Assert.Equal(expected, fixture.Main.Theme);
+        Assert.Equal(expected, fixture.Main.Settings.Theme);
+        Assert.Equal(expected, fixture.Appearance.Theme);
+        Assert.Equal(expected, Assert.Single(fixture.Settings.Writes).Theme);
+    }
+
+    [Theory]
+    [InlineData("Dark")]
+    [InlineData("Light")]
+    [InlineData("Classic")]
+    [InlineData("Dusk")]
+    public async Task Choosing_a_theme_in_settings_updates_the_shell_and_saved_preferences(string theme)
+    {
+        await using var fixture = new Fixture();
+        await fixture.Main.InitializeAsync();
+
+        fixture.Main.Settings.Theme = theme;
+        await fixture.Main.SaveAsync();
+
+        Assert.Equal(theme, fixture.Main.Theme);
+        Assert.Equal(theme, fixture.Appearance.Theme);
+        Assert.Equal(theme, Assert.Single(fixture.Settings.Writes).Theme);
+    }
+
+    [Fact]
+    public async Task Theme_shortcut_cycles_all_choices_in_settings_order_and_wraps()
+    {
+        await using var fixture = new Fixture();
+        await fixture.Main.InitializeAsync();
+        fixture.Main.Settings.Theme = "Dark";
+        Assert.Equal(new[] { "Dark", "Light", "Classic", "Dusk" }, fixture.Main.Settings.Themes);
+
+        foreach (string expected in new[] { "Light", "Classic", "Dusk", "Dark" })
+        {
+            fixture.Main.ToggleThemeCommand.Execute(null);
+            await fixture.Main.SaveAsync();
+            Assert.Equal(expected, fixture.Main.Theme);
+            Assert.Equal(expected, fixture.Main.Settings.Theme);
+            Assert.Equal(expected, fixture.Appearance.Theme);
+            Assert.Equal(expected, fixture.Settings.Writes.Last().Theme);
+        }
+
+        fixture.Main.Settings.Theme = "Dusk";
+        await fixture.Main.ExecutePaletteCommand.ExecuteAsync(new PaletteItem("theme", "Cycle theme", ""));
+        Assert.Equal("Dark", fixture.Main.Theme);
+    }
+
+    [Fact]
+    public async Task An_unknown_interactive_theme_falls_back_to_dark_without_desynchronizing_settings()
+    {
+        await using var fixture = new Fixture();
+        await fixture.Main.InitializeAsync();
+
+        fixture.Main.Theme = "missing-theme";
+        await fixture.Main.SaveAsync();
+
+        Assert.Equal("Dark", fixture.Main.Theme);
+        Assert.Equal("Dark", fixture.Main.Settings.Theme);
+        Assert.Equal("Dark", fixture.Appearance.Theme);
+        Assert.Equal("Dark", Assert.Single(fixture.Settings.Writes).Theme);
+        fixture.Main.ToggleThemeCommand.Execute(null);
+        Assert.Equal("Light", fixture.Main.Theme);
     }
 
     [Fact]

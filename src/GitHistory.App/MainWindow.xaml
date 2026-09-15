@@ -1,161 +1,353 @@
-<dx:ThemedWindow x:Class="GitHistory.App.MainWindow"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
-    xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
-    xmlns:dxa="http://schemas.devexpress.com/winfx/2008/xaml/accordion"
-    xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
-    xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/charts"
-    xmlns:dxrcc="http://schemas.devexpress.com/winfx/2008/xaml/charts/rangecontrolclient"
-    xmlns:dxdo="http://schemas.devexpress.com/winfx/2008/xaml/docking"
-    xmlns:b="clr-namespace:GitHistory.App.Behaviors"
-    Title="GitHistory" Icon="{dx:SvgImageSource Uri=Assets/branch.svg}" Width="1500" Height="940" MinWidth="1100" MinHeight="720"
-    WindowStartupLocation="CenterScreen" Background="{DynamicResource CanvasBrush}"
-    Foreground="{DynamicResource TextBrush}" FontFamily="Segoe UI Variable Text, Segoe UI"
-    FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True"
-    b:FocusBehavior.SearchTarget="{Binding ElementName=FileSearch}">
-    <dx:ThemedWindow.InputBindings>
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ui="clr-namespace:GitHistory.UI.Controls;assembly=GitHistory.UI" xmlns:b="clr-namespace:GitHistory.App.Behaviors" xmlns:uib="clr-namespace:GitHistory.UI.Behaviors;assembly=GitHistory.UI" x:Class="GitHistory.App.MainWindow" Title="GitHistory" Icon="{StaticResource BranchIcon}" Width="1500" Height="940" MinWidth="1100" MinHeight="720" WindowStartupLocation="CenterScreen" Background="{DynamicResource CanvasBrush}" Foreground="{DynamicResource TextBrush}" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True" b:FocusBehavior.SearchTarget="{Binding ElementName=FileSearch}">
+    <Window.InputBindings>
         <KeyBinding Modifiers="Control" Key="K" Command="{Binding OpenPaletteCommand}"/>
         <KeyBinding Modifiers="Control" Key="R" Command="{Binding Workspace.RefreshCommand}"/>
         <KeyBinding Key="F5" Command="{Binding Workspace.RefreshCommand}"/>
         <KeyBinding Modifiers="Control" Key="D" Command="{Binding ToggleThemeCommand}"/>
+        <KeyBinding Modifiers="Control" Key="B" Command="{x:Static ui:Sidebar.ToggleCommand}" CommandTarget="{Binding ElementName=WorkspaceSidebar}"/>
         <KeyBinding Key="Escape" Command="{Binding ClosePaletteCommand}"/>
-    </dx:ThemedWindow.InputBindings>
-    <dx:ThemedWindow.Resources>
-        <DataTemplate x:Key="ChangeBadgeTemplate"><Border Style="{StaticResource ChangeBadge}" Margin="0,5"><TextBlock Text="{Binding Value}" Style="{StaticResource ChangeLabel}"/></Border></DataTemplate>
+    </Window.InputBindings>
+    <Window.Resources>
+        <DataTemplate x:Key="ChangeBadgeTemplate">
+            <Border Style="{StaticResource ChangeBadge}" Margin="0,5">
+                <TextBlock Text="{Binding ChangeType}" Style="{StaticResource ChangeLabel}"/>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="DiffMarkerTemplate">
+            <TextBlock Text="{Binding Marker}" Style="{StaticResource Mono}" Margin="5,0"/>
+        </DataTemplate>
         <DataTemplate x:Key="DiffTextTemplate">
             <Border Padding="6,2" MinHeight="23">
-                <Border.Style><Style TargetType="Border"><Setter Property="Background" Value="Transparent"/><Style.Triggers>
-                    <DataTrigger Binding="{Binding RowData.Row.Kind}" Value="Added"><Setter Property="Background" Value="{DynamicResource AddedBackgroundBrush}"/></DataTrigger>
-                    <DataTrigger Binding="{Binding RowData.Row.Kind}" Value="Deleted"><Setter Property="Background" Value="{DynamicResource DeletedBackgroundBrush}"/></DataTrigger>
-                    <DataTrigger Binding="{Binding RowData.Row.Kind}" Value="Header"><Setter Property="Background" Value="{DynamicResource DiffHeaderBackgroundBrush}"/></DataTrigger>
-                    <DataTrigger Binding="{Binding RowData.Row.Kind}" Value="Notice"><Setter Property="Background" Value="{DynamicResource ModifiedBackgroundBrush}"/></DataTrigger>
-                </Style.Triggers></Style></Border.Style>
-                <TextBlock Text="{Binding Value}" FontFamily="Cascadia Code, Consolas" FontSize="12" TextWrapping="NoWrap"
-                           ToolTipService.InitialShowDelay="500" ToolTipService.ShowDuration="120000">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Kind}" Value="Added">
+                                <Setter Property="Background" Value="{DynamicResource AddedBackgroundBrush}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Kind}" Value="Deleted">
+                                <Setter Property="Background" Value="{DynamicResource DeletedBackgroundBrush}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Kind}" Value="Header">
+                                <Setter Property="Background" Value="{DynamicResource DiffHeaderBackgroundBrush}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Kind}" Value="Notice">
+                                <Setter Property="Background" Value="{DynamicResource ModifiedBackgroundBrush}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding Text}" FontFamily="Cascadia Code, Consolas" FontSize="12" TextWrapping="NoWrap" ToolTipService.InitialShowDelay="500" ToolTipService.ShowDuration="120000">
                     <TextBlock.ToolTip>
-                        <ToolTip MaxWidth="820" MaxHeight="330" Padding="12" StaysOpen="True"
-                                 Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}">
+                        <ToolTip MaxWidth="820" MaxHeight="330" Padding="12" StaysOpen="True" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}">
                             <StackPanel>
-                                <TextBlock Text="FULL LINE · SELECT TEXT TO COPY" Style="{StaticResource Eyebrow}" Margin="0,0,0,8"/>
-                                <TextBox Text="{Binding RowData.Row.Text, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True"
-                                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                                         MinWidth="320" MaxWidth="780" MaxHeight="275" Padding="4" BorderThickness="0"
-                                         FontFamily="Cascadia Code, Consolas" FontSize="12" Focusable="True"
-                                         Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"
-                                         AutomationProperties.Name="Complete diff line; select and copy text"/>
+                                <TextBlock Text="Full line · select text to copy" Style="{StaticResource Eyebrow}" Margin="0,0,0,8"/>
+                                <TextBox Text="{Binding Text, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MinWidth="320" MaxWidth="780" MaxHeight="275" Padding="4" BorderThickness="0" FontFamily="Cascadia Code, Consolas" FontSize="12" Focusable="True" Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}" AutomationProperties.Name="Complete diff line; select and copy text"/>
                             </StackPanel>
                         </ToolTip>
                     </TextBlock.ToolTip>
-                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Style.Triggers>
-                        <DataTrigger Binding="{Binding RowData.Row.Kind}" Value="Added"><Setter Property="Foreground" Value="{DynamicResource AddedBrush}"/></DataTrigger>
-                        <DataTrigger Binding="{Binding RowData.Row.Kind}" Value="Deleted"><Setter Property="Foreground" Value="{DynamicResource DeletedBrush}"/></DataTrigger>
-                        <DataTrigger Binding="{Binding RowData.Row.Kind}" Value="Header"><Setter Property="Foreground" Value="{DynamicResource DiffHeaderBrush}"/></DataTrigger>
-                    </Style.Triggers></Style></TextBlock.Style>
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Kind}" Value="Added">
+                                    <Setter Property="Foreground" Value="{DynamicResource AddedBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Kind}" Value="Deleted">
+                                    <Setter Property="Foreground" Value="{DynamicResource DeletedBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Kind}" Value="Header">
+                                    <Setter Property="Foreground" Value="{DynamicResource DiffHeaderBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
                 </TextBlock>
             </Border>
         </DataTemplate>
-    </dx:ThemedWindow.Resources>
-    <Grid>
+    </Window.Resources>
+    <Grid Background="{DynamicResource CanvasBrush}">
         <Grid x:Name="WorkspaceContent">
-            <Grid.IsEnabled><MultiBinding Converter="{StaticResource NoModalOpen}"><Binding Path="IsPaletteOpen"/><Binding Path="Workspace.IsConnectOpen"/><Binding Path="Settings.IsOpen"/><Binding Path="Import.IsOpen"/></MultiBinding></Grid.IsEnabled>
-            <Grid.RowDefinitions><RowDefinition Height="64"/><RowDefinition Height="*"/><RowDefinition Height="30"/></Grid.RowDefinitions>
-            <Grid.ColumnDefinitions><ColumnDefinition Width="245"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Grid.IsEnabled>
+                <MultiBinding Converter="{StaticResource NoModalOpen}">
+                    <Binding Path="IsPaletteOpen"/>
+                    <Binding Path="Workspace.IsConnectOpen"/>
+                    <Binding Path="Settings.IsOpen"/>
+                    <Binding Path="Import.IsOpen"/>
+                </MultiBinding>
+            </Grid.IsEnabled>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="64"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="30"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
             <Border Grid.ColumnSpan="2" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1">
-                <Grid Margin="22,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Grid Margin="22,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="34" Height="34" Background="{DynamicResource AccentSoftBrush}" CornerRadius="8" Margin="0,0,11,0"><Image Width="23" Height="23" Source="{dx:SvgImageSource Uri=Assets/branch.svg}"/></Border>
-                        <TextBlock Text="GitHistory" FontSize="21" FontWeight="SemiBold"/><Border Width="1" Height="18" Background="{DynamicResource LineBrush}" Margin="23,0"/><TextBlock Text="FOLLOW THE CHANGE" Style="{StaticResource Eyebrow}"/>
+                        <Border Width="34" Height="34" Background="{DynamicResource AccentSoftBrush}" CornerRadius="8" Margin="0,0,11,0">
+                            <Image Width="23" Height="23" Source="{StaticResource BranchIcon}"/>
+                        </Border>
+                        <TextBlock Text="GitHistory" FontSize="21" FontWeight="SemiBold"/>
+                        <Border Width="1" Height="18" Background="{DynamicResource LineBrush}" Margin="23,0"/>
+                        <TextBlock Text="Follow the change." FontSize="12" Foreground="{DynamicResource MutedBrush}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <dx:SimpleButton Style="{StaticResource QuietButton}" Command="{Binding OpenPaletteCommand}" Content="Commands    Ctrl K" ToolTip="Open command palette (Ctrl+K)" AutomationProperties.Name="Open command palette"/>
-                        <dx:SimpleButton Style="{StaticResource ActionButton}" Command="{Binding OpenImportCommand}" Content="Import repositories" Margin="12,0,0,0"/>
-                        <dx:SimpleButton Style="{StaticResource PrimaryButton}" x:Name="ConnectRepositoryButton" Command="{Binding Workspace.OpenConnectCommand}" Content="＋  Connect repository" Margin="15,0,0,0"/>
+                        <ComboBox x:Name="LayoutPicker" Width="142" Margin="0,0,14,0" ItemsSource="{x:Static ui:WorkspaceLayout.Presets}"
+                                  DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding Layout, ElementName=WorkspaceDock, Mode=TwoWay}"
+                                  ToolTip="Workspace layout" AutomationProperties.Name="Workspace layout"/>
+                        <Button Style="{StaticResource QuietButton}" Command="{Binding OpenPaletteCommand}" Content="Commands    Ctrl K" ToolTip="Open command palette (Ctrl+K)" AutomationProperties.Name="Open command palette"/>
+                        <Button Style="{StaticResource ActionButton}" Command="{Binding OpenImportCommand}" Content="Import repositories" Margin="12,0,0,0"/>
+                        <Button Style="{StaticResource PrimaryButton}" x:Name="ConnectRepositoryButton" Command="{Binding Workspace.OpenConnectCommand}" Content="＋  Connect repository" Margin="15,0,0,0"/>
                     </StackPanel>
                 </Grid>
             </Border>
-            <Border Grid.Row="1" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0">
-                <Grid Margin="13,15,13,12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <ui:Sidebar x:Name="WorkspaceSidebar" Grid.Row="1" Header="Repository explorer" ExpandedWidth="252">
+                <Grid Margin="13,5,13,12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
                     <StackPanel>
-                        <DockPanel Margin="6,0,3,10"><TextBlock Text="WORKSPACES" Style="{StaticResource Eyebrow}"/><CheckBox Content="Pinned" IsChecked="{Binding Workspace.ShowOnlyPinned}" HorizontalAlignment="Right" FontSize="11" ToolTip="Show favorite repositories only"/></DockPanel>
-                        <dxe:TextEdit EditValue="{Binding Workspace.RepositorySearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" NullText="Find a workspace…" Style="{StaticResource FilterEditor}" Margin="0,0,0,7" AutomationProperties.Name="Search workspaces"/>
+                        <DockPanel Margin="6,0,3,10">
+                            <TextBlock Text="Workspaces" Style="{StaticResource Eyebrow}"/>
+                            <CheckBox Content="Pinned" IsChecked="{Binding Workspace.ShowOnlyPinned}" HorizontalAlignment="Right" FontSize="11" ToolTip="Show favorite repositories only"/>
+                        </DockPanel>
+                        <ui:SearchBox Text="{Binding Workspace.RepositorySearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Placeholder="Find a workspace…" Margin="0,0,0,7" AutomationProperties.Name="Search workspaces"/>
                     </StackPanel>
                     <StackPanel Grid.Row="1">
-                        <dxa:AccordionControl x:Name="RepositoryNavigator" ItemsSource="{Binding Workspace.VisibleRepositories, NotifyOnTargetUpdated=True}" SelectedItem="{Binding Workspace.SelectedRepository, Mode=OneWay}" b:ExplicitSelectionBehavior.SelectionCommand="{Binding Workspace.SelectRepositoryCommand}" ShowSearchControl="False" IsCollapseButtonVisible="False" Background="Transparent" BorderThickness="0" MaxHeight="190" AutomationProperties.Name="Saved repositories">
-                            <dxa:AccordionControl.ItemTemplate><HierarchicalDataTemplate><DockPanel Margin="0,5" ToolTip="{Binding RemoteUrl}">
-                                <Image Width="15" Height="15" Source="{dx:SvgImageSource Uri=Assets/repository.svg}" Margin="0,0,8,0"/>
-                                <TextBlock DockPanel.Dock="Right" Text="DEMO" FontSize="9" Foreground="{DynamicResource AccentBrush}" Margin="5,0,0,0" Visibility="{Binding IsDemo, Converter={StaticResource BoolVisibility}}"/>
-                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="145"/>
-                            </DockPanel></HierarchicalDataTemplate></dxa:AccordionControl.ItemTemplate>
-                        </dxa:AccordionControl>
+                        <ListBox x:Name="RepositoryNavigator" ItemsSource="{Binding Workspace.VisibleRepositories, NotifyOnTargetUpdated=True}" SelectedItem="{Binding Workspace.SelectedRepository, Mode=OneWay}" b:ExplicitSelectionBehavior.SelectionCommand="{Binding Workspace.SelectRepositoryCommand}" Background="Transparent" BorderThickness="0" MaxHeight="190" AutomationProperties.Name="Saved repositories">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="0,5" ToolTip="{Binding RemoteUrl}">
+                                        <Image Width="15" Height="15" Source="{StaticResource RepositoryIcon}" Margin="0,0,8,0"/>
+                                        <TextBlock DockPanel.Dock="Right" Text="Demo" FontSize="9" Foreground="{DynamicResource AccentBrush}" Margin="5,0,0,0" Visibility="{Binding IsDemo, Converter={StaticResource BoolVisibility}}"/>
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                         <TextBlock Text="No matching workspaces" FontSize="11" Foreground="{DynamicResource QuietBrush}" Margin="7,8" Visibility="{Binding Workspace.VisibleRepositories.Count, Converter={StaticResource EmptyVisibility}}"/>
                         <Border Background="{DynamicResource ElevatedBrush}" CornerRadius="5" Padding="10,8" Margin="0,9,0,0">
-                            <Border.ContextMenu><ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"><MenuItem Header="Open source control page" Command="{Binding Actions.OpenRepositoryBrowserCommand}"/><MenuItem Header="Copy remote URL" Command="{Binding Actions.CopyRemoteUrlCommand}"/><Separator/><MenuItem Header="Open checkout in Explorer" Command="{Binding Actions.OpenExplorerCommand}"/><MenuItem Header="Open checkout in Cursor" Command="{Binding Actions.OpenCursorCommand}"/><MenuItem Header="Link local checkout…" Command="{Binding Actions.LinkLocalFolderCommand}"/><Separator/><MenuItem Header="Pin / unpin workspace" Command="{Binding Workspace.TogglePinCommand}"/></ContextMenu></Border.ContextMenu>
+                            <Border.ContextMenu>
+                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                    <MenuItem Header="Open source control page" Command="{Binding Actions.OpenRepositoryBrowserCommand}"/>
+                                    <MenuItem Header="Copy remote URL" Command="{Binding Actions.CopyRemoteUrlCommand}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Open checkout in Explorer" Command="{Binding Actions.OpenExplorerCommand}"/>
+                                    <MenuItem Header="Open checkout in Cursor" Command="{Binding Actions.OpenCursorCommand}"/>
+                                    <MenuItem Header="Link local checkout…" Command="{Binding Actions.LinkLocalFolderCommand}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Pin / unpin workspace" Command="{Binding Workspace.TogglePinCommand}"/>
+                                </ContextMenu>
+                            </Border.ContextMenu>
                             <DockPanel>
-                            <dx:SimpleButton DockPanel.Dock="Right" Command="{Binding Workspace.TogglePinCommand}" Padding="5,2" MinHeight="26" ToolTip="Pin or unpin the active workspace" AutomationProperties.Name="Pin active workspace">
-                                <dx:SimpleButton.Style><Style TargetType="dx:SimpleButton" BasedOn="{StaticResource QuietButton}"><Setter Property="Content" Value="☆"/><Style.Triggers><DataTrigger Binding="{Binding Workspace.SelectedIsPinned}" Value="True"><Setter Property="Content" Value="★"/><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/></DataTrigger></Style.Triggers></Style></dx:SimpleButton.Style>
-                            </dx:SimpleButton>
-                            <StackPanel><TextBlock Text="ACTIVE WORKSPACE" FontSize="9" Foreground="{DynamicResource QuietBrush}"/><TextBlock Text="{Binding Workspace.SelectedRepository.Name}" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" ToolTip="{Binding Workspace.SelectedRepository.RemoteUrl}"/></StackPanel>
-                        </DockPanel></Border>
+                                <Button DockPanel.Dock="Right" Command="{Binding Workspace.TogglePinCommand}" Padding="5,2" MinHeight="26" ToolTip="Pin or unpin the active workspace" AutomationProperties.Name="Pin active workspace">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource QuietButton}">
+                                            <Setter Property="Content" Value="☆"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Workspace.SelectedIsPinned}" Value="True">
+                                                    <Setter Property="Content" Value="★"/>
+                                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <StackPanel>
+                                    <TextBlock Text="Active workspace" FontSize="9" Foreground="{DynamicResource QuietBrush}"/>
+                                    <TextBlock Text="{Binding Workspace.SelectedRepository.Name}" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" ToolTip="{Binding Workspace.SelectedRepository.RemoteUrl}"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
                     </StackPanel>
                     <StackPanel Grid.Row="2" Margin="0,16,0,7">
-                        <DockPanel Margin="6,0,2,9"><TextBlock Text="FOLDERS" Style="{StaticResource Eyebrow}"/><dx:SimpleButton Content="Clear filters" Command="{Binding Browser.ClearFiltersCommand}" Style="{StaticResource QuietButton}" MinHeight="20" Padding="3,0" FontSize="10" HorizontalAlignment="Right"/></DockPanel>
-                        <dxe:TextEdit EditValue="{Binding Browser.FolderSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" NullText="Find a folder…" Style="{StaticResource FilterEditor}" AutomationProperties.Name="Search workspace folders"/>
+                        <DockPanel Margin="6,0,2,9">
+                            <TextBlock Text="Folders" Style="{StaticResource Eyebrow}"/>
+                            <Button Content="Clear filters" Command="{Binding Browser.ClearFiltersCommand}" Style="{StaticResource QuietButton}" MinHeight="20" Padding="3,0" FontSize="10" HorizontalAlignment="Right"/>
+                        </DockPanel>
+                        <ui:SearchBox Text="{Binding Browser.FolderSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Placeholder="Find a folder…" AutomationProperties.Name="Search workspace folders"/>
                     </StackPanel>
-                    <dxg:TreeListControl Grid.Row="3" x:Name="FolderTree" ItemsSource="{Binding Browser.VisibleTreeNodes, NotifyOnTargetUpdated=True}" SelectedItem="{Binding Browser.SelectedNode, Mode=OneWay}" b:ExplicitSelectionBehavior.SelectionCommand="{Binding Browser.SelectFolderCommand}" AutoGenerateColumns="None" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Filter files by folder">
-                        <dxg:TreeListControl.View><dxg:TreeListView KeyFieldName="Id" ParentFieldName="ParentId" RowIndent="12" AutoExpandAllNodes="True" AutoWidth="True" ShowColumnHeaders="False" ShowIndicator="False" AllowEditing="False" NavigationStyle="Row" ShowHorizontalLines="False" ShowVerticalLines="False"/></dxg:TreeListControl.View>
-                        <dxg:TreeListColumn FieldName="Name" Width="*"><dxg:TreeListColumn.CellDisplayTemplate><DataTemplate><DockPanel Margin="3,6" ToolTip="{Binding RowData.Row.Path}"><Image Source="{dx:SvgImageSource Uri=Assets/folder.svg}" Width="13" Height="13" Margin="0,0,7,0"/><TextBlock Text="{Binding Value}" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis"/></DockPanel></DataTemplate></dxg:TreeListColumn.CellDisplayTemplate></dxg:TreeListColumn>
-                        <dxg:TreeListColumn FieldName="Count" Width="30" FixedWidth="True"/>
-                    </dxg:TreeListControl>
+                    <TreeView Grid.Row="3" x:Name="FolderTree" ItemsSource="{Binding Browser.VisibleTreeNodes, Converter={StaticResource FolderHierarchy}, NotifyOnTargetUpdated=True}" b:ExplicitSelectionBehavior.SelectedItem="{Binding Browser.SelectedNode, Mode=OneWay}" b:ExplicitSelectionBehavior.SelectionCommand="{Binding Browser.SelectFolderCommand}" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Filter files by folder" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                                <Setter Property="IsExpanded" Value="True"/>
+                                <Setter Property="Padding" Value="2,2"/>
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                <DockPanel Margin="2,5" ToolTip="{Binding Node.Path}">
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Node.Count}" Width="22" TextAlignment="Right" Foreground="{DynamicResource QuietBrush}" FontSize="10" Margin="8,0,3,0"/>
+                                    <Image Source="{StaticResource FolderIcon}" Width="13" Height="13" Margin="0,0,7,0"/>
+                                    <TextBlock Text="{Binding Node.Name}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                </DockPanel>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
                     <StackPanel Grid.Row="4">
                         <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Margin="0,10,0,7"/>
-                        <dx:SimpleButton Style="{StaticResource QuietButton}" Content="↗  Source control page" HorizontalContentAlignment="Left" Command="{Binding Actions.OpenRepositoryBrowserCommand}"/>
-                        <dx:SimpleButton Style="{StaticResource QuietButton}" Content="⚙  Settings" HorizontalContentAlignment="Left" Command="{Binding OpenSettingsCommand}"/>
+                        <Button Style="{StaticResource QuietButton}" Content="↗  Source control page" HorizontalContentAlignment="Left" Command="{Binding Actions.OpenRepositoryBrowserCommand}"/>
+                        <Button Style="{StaticResource QuietButton}" Content="⚙  Settings" HorizontalContentAlignment="Left" Command="{Binding OpenSettingsCommand}"/>
                     </StackPanel>
                 </Grid>
-            </Border>
-            <Grid Grid.Row="1" Grid.Column="1" Margin="24,18,24,14">
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <Grid Margin="0,0,0,17"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <StackPanel><StackPanel Orientation="Horizontal"><TextBlock Text="{Binding Browser.Heading}" FontSize="25" FontWeight="SemiBold"/><Border CornerRadius="4" Background="{DynamicResource AccentSoftBrush}" Padding="7,3" Margin="12,2,0,0" VerticalAlignment="Center" Visibility="{Binding Workspace.IsDemo, Converter={StaticResource BoolVisibility}}"><TextBlock Text="DEMO" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="SemiBold"/></Border></StackPanel><TextBlock Text="{Binding Browser.Subtitle}" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,6,0,0"/></StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="BRANCH" Style="{StaticResource Eyebrow}" Margin="0,0,10,0"/><dxe:ComboBoxEdit ItemsSource="{Binding Workspace.Branches}" EditValue="{Binding Workspace.SelectedBranch, Mode=TwoWay}" IsTextEditable="False" Width="165" MinHeight="34" NullText="Select branch" AutomationProperties.Name="Branch"/><dx:SimpleButton Style="{StaticResource ActionButton}" Command="{Binding Workspace.RefreshCommand}" Content="Refresh" Glyph="{dx:SvgImageSource Uri=Assets/refresh.svg}" Margin="10,0,0,0" ToolTip="Fetch latest changes (F5)"/></StackPanel>
+            </ui:Sidebar>
+            <Grid Grid.Row="1" Grid.Column="1" Margin="22,20,22,16">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid Margin="0,0,0,17">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Browser.Heading}" FontSize="25" FontWeight="SemiBold"/>
+                            <Border CornerRadius="4" Background="{DynamicResource AccentSoftBrush}" Padding="7,3" Margin="12,2,0,0" VerticalAlignment="Center" Visibility="{Binding Workspace.IsDemo, Converter={StaticResource BoolVisibility}}">
+                                <TextBlock Text="Demo" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="SemiBold"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Browser.Subtitle}" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,6,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Branch" Style="{StaticResource Eyebrow}" Margin="0,0,10,0"/>
+                        <ComboBox ItemsSource="{Binding Workspace.Branches}" SelectedItem="{Binding Workspace.SelectedBranch, Mode=TwoWay}" IsEditable="False" Width="165" MinHeight="34" AutomationProperties.Name="Branch"/>
+                        <Button Style="{StaticResource ActionButton}" Command="{Binding Workspace.RefreshCommand}" Content="Refresh" Margin="10,0,0,0" ToolTip="Fetch latest changes (F5)"/>
+                    </StackPanel>
                 </Grid>
-                <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="7" Padding="19,13" Margin="0,0,0,13" Visibility="{Binding Settings.ShowActivityChart, Converter={StaticResource BoolVisibility}}">
-                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="110"/><ColumnDefinition Width="110"/><ColumnDefinition Width="105"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                        <StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding Browser.FilesCount, StringFormat=N0}" FontSize="29" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/><TextBlock Text="files in view" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/></StackPanel>
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding Browser.CommitCount, StringFormat=N0}" FontSize="29" FontWeight="SemiBold"/><TextBlock Text="commits" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/></StackPanel>
-                        <StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="{Binding Browser.ContributorCount, StringFormat=N0}" FontSize="29" FontWeight="SemiBold"/><TextBlock Text="contributors" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/></StackPanel>
-                        <Grid Grid.Column="3" Margin="17,0,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="40"/><RowDefinition Height="22"/></Grid.RowDefinitions>
-                            <DockPanel><TextBlock Text="BRANCH ACTIVITY" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding Browser.Activity, Converter={StaticResource ActivityExtent}}" FontSize="10" Foreground="{DynamicResource QuietBrush}" HorizontalAlignment="Right"/></DockPanel>
-                            <dxc:ChartControl Grid.Row="1" DataSource="{Binding Browser.Activity}" SelectedItem="{Binding Browser.SelectedActivity, Mode=TwoWay}" SelectionMode="Single" SeriesSelectionMode="Point" CrosshairEnabled="True" BorderThickness="0" Background="Transparent" Padding="0" AnimationMode="Disabled" AutomationProperties.Name="Branch activity; select a day to filter changes">
-                                <dxc:XYDiagram2D><dxc:XYDiagram2D.DefaultPane><dxc:Pane DomainBrush="{DynamicResource SurfaceBrush}" DomainBorderBrush="Transparent"/></dxc:XYDiagram2D.DefaultPane><dxc:XYDiagram2D.AxisX><dxc:AxisX2D Visible="False"/></dxc:XYDiagram2D.AxisX><dxc:XYDiagram2D.AxisY><dxc:AxisY2D Visible="False"/></dxc:XYDiagram2D.AxisY><dxc:BarSideBySideSeries2D ArgumentDataMember="Date" ValueDataMember="Files" ArgumentScaleType="DateTime" Brush="{DynamicResource AccentBrush}" DisplayName="Files changed" CrosshairLabelPattern="{}{A:MMM d}: {V:N0} files"/></dxc:XYDiagram2D>
-                            </dxc:ChartControl>
-                            <dxe:RangeControl Grid.Row="2" SelectionRangeStart="{Binding Browser.RangeStart, Mode=TwoWay}" SelectionRangeEnd="{Binding Browser.RangeEnd, Mode=TwoWay}" ResetRangesOnClientItemsSourceChanged="False" AllowImmediateRangeUpdate="False" BorderThickness="0" ShowRangeBar="False" ShowLabels="False" ShowNavigationButtons="False" Background="Transparent" AutomationProperties.Name="Activity date range"><dxe:RangeControl.Client><dxrcc:DateTimeChartRangeControlClient ShowArgumentLabels="False" ShowGridLines="False" ItemsSource="{Binding Browser.Activity}" ArgumentDataMember="Date" ValueDataMember="Files"><dxrcc:DateTimeChartRangeControlClient.View><dxrcc:RangeControlClientBarView/></dxrcc:DateTimeChartRangeControlClient.View></dxrcc:DateTimeChartRangeControlClient></dxe:RangeControl.Client></dxe:RangeControl>
+                <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="7" Padding="19,13" Margin="0,0,0,13" >
+                    <Border.Visibility>
+                        <MultiBinding Converter="{StaticResource MinimumHeightVisibility}" ConverterParameter="800">
+                            <Binding Path="Settings.ShowActivityChart"/>
+                            <Binding Path="ActualHeight" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                        </MultiBinding>
+                    </Border.Visibility>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="105"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Browser.FilesCount, StringFormat=N0}" FontSize="29" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="files in view" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Browser.CommitCount, StringFormat=N0}" FontSize="29" FontWeight="SemiBold"/>
+                            <TextBlock Text="commits" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Browser.ContributorCount, StringFormat=N0}" FontSize="29" FontWeight="SemiBold"/>
+                            <TextBlock Text="contributors" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <Grid Grid.Column="3" Margin="17,0,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="52"/>
+                                <RowDefinition Height="22"/>
+                            </Grid.RowDefinitions>
+                            <DockPanel>
+                                <TextBlock Text="Branch activity" Style="{StaticResource Eyebrow}"/>
+                                <TextBlock Text="{Binding Browser.Activity, Converter={StaticResource ActivityExtent}}" FontSize="10" Foreground="{DynamicResource QuietBrush}" HorizontalAlignment="Right"/>
+                            </DockPanel>
+                            <ui:ActivityChart x:Name="ActivityChart" Grid.Row="1" Grid.RowSpan="2" ItemsSource="{Binding Browser.Activity}" DateMemberPath="Date" ValueMemberPath="Files" SelectedItem="{Binding Browser.SelectedActivity, Mode=TwoWay}" RangeStart="{Binding Browser.RangeStart, Mode=TwoWay}" RangeEnd="{Binding Browser.RangeEnd, Mode=TwoWay}" AutomationProperties.Name="Branch activity; click a day or drag a date range"/>
                         </Grid>
                     </Grid>
                 </Border>
-                <Grid Grid.Row="2" Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="170"/><ColumnDefinition Width="135"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <dxe:TextEdit x:Name="FileSearch" EditValue="{Binding Browser.Search, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" NullText="Search files, paths, or commit messages…   Ctrl F" Style="{StaticResource FilterEditor}" Margin="0,0,10,0" AutomationProperties.Name="Search files paths or commit messages"/>
-                    <dxe:ComboBoxEdit Grid.Column="1" ItemsSource="{Binding Browser.Authors}" EditValue="{Binding Browser.SelectedAuthor, Mode=TwoWay}" IsTextEditable="False" MinHeight="34" Margin="0,0,10,0" NullText="All authors" AutomationProperties.Name="Author filter"/>
-                    <dxe:ComboBoxEdit Grid.Column="2" ItemsSource="{Binding Browser.DatePresets}" EditValue="{Binding Browser.DatePreset, Mode=TwoWay}" IsTextEditable="False" MinHeight="34" AutomationProperties.Name="Date range preset"/>
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" Visibility="{Binding Browser.IsCustomRange, Converter={StaticResource BoolVisibility}}"><dxe:DateEdit EditValue="{Binding Browser.FromDate, Mode=TwoWay}" Width="120" MinHeight="34" Margin="10,0,0,0" DisplayFormatString="MMM d, yyyy" AutomationProperties.Name="From date"/><TextBlock Text="–" Margin="6,0" Foreground="{DynamicResource MutedBrush}"/><dxe:DateEdit EditValue="{Binding Browser.UntilDate, Mode=TwoWay}" Width="120" MinHeight="34" DisplayFormatString="MMM d, yyyy" AutomationProperties.Name="Until date inclusive"/></StackPanel>
+                <Grid Grid.Row="2" Margin="0,0,0,12">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="135"/>
+                    </Grid.ColumnDefinitions>
+                    <ui:SearchBox x:Name="FileSearch" Text="{Binding Browser.Search, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Placeholder="Search files, paths, or commit messages…   Ctrl F" Margin="0,0,10,0" AutomationProperties.Name="Search files paths or commit messages"/>
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding Browser.Authors}" SelectedItem="{Binding Browser.SelectedAuthor, Mode=TwoWay}" IsEditable="False" MinHeight="34" Margin="0,0,10,0" AutomationProperties.Name="Author filter"/>
+                    <ComboBox Grid.Column="2" ItemsSource="{Binding Browser.DatePresets}" SelectedItem="{Binding Browser.DatePreset, Mode=TwoWay}" IsEditable="False" MinHeight="34" AutomationProperties.Name="Date range preset"/>
+                    <StackPanel Grid.Row="1" Grid.ColumnSpan="3" HorizontalAlignment="Right" Margin="0,10,0,0" Orientation="Horizontal" Visibility="{Binding Browser.IsCustomRange, Converter={StaticResource BoolVisibility}}">
+                        <TextBlock Text="Date range" FontSize="11" Foreground="{DynamicResource MutedBrush}"/>
+                        <DatePicker SelectedDate="{Binding Browser.FromDate, Mode=TwoWay}" Width="120" MinHeight="34" Margin="10,0,0,0" AutomationProperties.Name="From date"/>
+                        <TextBlock Text="–" Margin="6,0" Foreground="{DynamicResource MutedBrush}"/>
+                        <DatePicker SelectedDate="{Binding Browser.UntilDate, Mode=TwoWay}" Width="120" MinHeight="34" AutomationProperties.Name="Until date inclusive"/>
+                    </StackPanel>
                 </Grid>
                 <StackPanel Grid.Row="3">
                     <Border Background="{DynamicResource ModifiedBackgroundBrush}" CornerRadius="5" Padding="12,9" Margin="0,0,0,10">
-                        <Border.Style><Style TargetType="Border"><Style.Triggers><DataTrigger Binding="{Binding Browser.QueryError}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Border.Style>
-                        <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto"><TextBlock Text="{Binding Browser.QueryError}" Foreground="{DynamicResource ModifiedBrush}" TextWrapping="Wrap"/></ScrollViewer>
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Browser.QueryError}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto">
+                            <TextBlock Text="{Binding Browser.QueryError}" Foreground="{DynamicResource ModifiedBrush}" TextWrapping="Wrap"/>
+                        </ScrollViewer>
                     </Border>
-                    <Border Background="{DynamicResource DeletedBackgroundBrush}" BorderBrush="{DynamicResource DeletedBrush}" BorderThickness="1" CornerRadius="5" Padding="12,9" Margin="0,0,0,10" Visibility="{Binding Workspace.HasError, Converter={StaticResource BoolVisibility}}"><ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto"><TextBlock Text="{Binding Workspace.Error}" Foreground="{DynamicResource DeletedBrush}" TextWrapping="Wrap"/></ScrollViewer></Border>
-                    <Border Background="{DynamicResource DeletedBackgroundBrush}" CornerRadius="5" Padding="12,8" Margin="0,0,0,10" Visibility="{Binding Actions.Error, Converter={StaticResource NonEmptyVisibility}}"><TextBlock Text="{Binding Actions.Error}" TextWrapping="Wrap" Foreground="{DynamicResource DeletedBrush}"/></Border>
-                    <Border Background="{DynamicResource ElevatedBrush}" CornerRadius="5" Padding="12,8" Margin="0,0,0,10" Visibility="{Binding Workspace.IsBusy, Converter={StaticResource BoolVisibility}}"><DockPanel><dx:SimpleButton DockPanel.Dock="Right" Style="{StaticResource QuietButton}" Content="Cancel" Command="{Binding Workspace.RefreshCancelCommand}" MinHeight="25" Padding="8,2"/><StackPanel><TextBlock Text="{Binding Workspace.ProgressText}" FontSize="12" Margin="0,0,0,6"/><dxe:ProgressBarEdit Height="3" BorderThickness="0"><dxe:ProgressBarEdit.StyleSettings><dxe:ProgressBarMarqueeStyleSettings/></dxe:ProgressBarEdit.StyleSettings></dxe:ProgressBarEdit></StackPanel></DockPanel></Border>
+                    <Border Background="{DynamicResource DeletedBackgroundBrush}" BorderBrush="{DynamicResource DeletedBrush}" BorderThickness="1" CornerRadius="5" Padding="12,9" Margin="0,0,0,10" Visibility="{Binding Workspace.HasError, Converter={StaticResource BoolVisibility}}">
+                        <ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto">
+                            <TextBlock Text="{Binding Workspace.Error}" Foreground="{DynamicResource DeletedBrush}" TextWrapping="Wrap"/>
+                        </ScrollViewer>
+                    </Border>
+                    <Border Background="{DynamicResource DeletedBackgroundBrush}" CornerRadius="5" Padding="12,8" Margin="0,0,0,10" Visibility="{Binding Actions.Error, Converter={StaticResource NonEmptyVisibility}}">
+                        <TextBlock Text="{Binding Actions.Error}" TextWrapping="Wrap" Foreground="{DynamicResource DeletedBrush}"/>
+                    </Border>
+                    <Border Background="{DynamicResource ElevatedBrush}" CornerRadius="5" Padding="12,8" Margin="0,0,0,10" Visibility="{Binding Workspace.IsBusy, Converter={StaticResource BoolVisibility}}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource QuietButton}" Content="Cancel" Command="{Binding Workspace.RefreshCancelCommand}" MinHeight="25" Padding="8,2"/>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Workspace.ProgressText}" FontSize="12" Margin="0,0,0,6"/>
+                                <ProgressBar IsIndeterminate="True" Height="3" BorderThickness="0"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
                 </StackPanel>
-                <dxdo:DockLayoutManager x:Name="WorkspaceDock" Grid.Row="4" Background="{DynamicResource CanvasBrush}" dxdo:RestoreLayoutOptions.AddNewPanels="True" dxdo:RestoreLayoutOptions.RemoveOldPanels="True">
-                    <dxdo:LayoutGroup x:Name="WorkspaceRoot" Orientation="Vertical">
-                        <dxdo:LayoutPanel x:Name="FilesPanel" Caption="Files" ShowCaption="False" AllowClose="False" AllowFloat="False" AllowDock="False" ItemHeight="1*">
-                            <Grid Background="{DynamicResource SurfaceBrush}"><Grid.RowDefinitions><RowDefinition Height="43"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                                <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1,1,1,0" Background="{DynamicResource SurfaceBrush}"><DockPanel><StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="15,0"><Image Source="{dx:SvgImageSource Uri=Assets/folder.svg}" Width="13" Height="13" Margin="0,0,7,0"/><TextBlock Text="{Binding Browser.FolderLabel}" FontSize="11" Foreground="{DynamicResource MutedBrush}" MaxWidth="350" TextTrimming="CharacterEllipsis" ToolTip="{Binding Browser.FolderLabel}"/></StackPanel><StackPanel Orientation="Horizontal"><RadioButton Content="Recent changes" GroupName="FileMode" Style="{StaticResource ViewTab}" IsChecked="{Binding Browser.Mode, Mode=TwoWay, Converter={StaticResource EnumSelection}, ConverterParameter=RecentChanges}"/><RadioButton Content="All files" GroupName="FileMode" Style="{StaticResource ViewTab}" IsChecked="{Binding Browser.Mode, Mode=TwoWay, Converter={StaticResource EnumSelection}, ConverterParameter=AllFiles}"/></StackPanel></DockPanel></Border>
-                                <dxg:GridControl x:Name="FilesGrid" Grid.Row="1" ItemsSource="{Binding Browser.Files}" SelectedItem="{Binding Browser.SelectedFile, Mode=TwoWay}" Tag="{Binding}" b:RowContextBehavior.SelectOnRightClick="True" AutoGenerateColumns="None" BorderBrush="{DynamicResource LineBrush}" Background="{DynamicResource SurfaceBrush}" AutomationProperties.Name="Files ordered by last change">
-                                    <dxg:GridControl.ContextMenu><ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                <ui:WorkspaceLayout x:Name="WorkspaceDock" Grid.Row="4" Background="{DynamicResource CanvasBrush}">
+                    <Border x:Name="FilesPanel" ui:WorkspaceLayout.Region="Primary" CornerRadius="8" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" ClipToBounds="True">
+                        <Grid Background="{DynamicResource SurfaceBrush}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="43"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1,1,1,0" Background="{DynamicResource SurfaceBrush}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton Content="Recent changes" GroupName="FileMode" Style="{StaticResource ViewTab}" IsChecked="{Binding Browser.Mode, Mode=TwoWay, Converter={StaticResource EnumSelection}, ConverterParameter=RecentChanges}"/>
+                                        <RadioButton Content="All files" GroupName="FileMode" Style="{StaticResource ViewTab}" IsChecked="{Binding Browser.Mode, Mode=TwoWay, Converter={StaticResource EnumSelection}, ConverterParameter=AllFiles}"/>
+                                    </StackPanel>
+                                    <DockPanel Grid.Column="1" Margin="12,0" HorizontalAlignment="Right">
+                                        <Image Source="{StaticResource FolderIcon}" Width="13" Height="13" Margin="0,0,7,0"/>
+                                        <TextBlock Text="{Binding Browser.FolderLabel}" FontSize="11" Foreground="{DynamicResource MutedBrush}" MaxWidth="350" TextTrimming="CharacterEllipsis" ToolTip="{Binding Browser.FolderLabel}"/>
+                                    </DockPanel>
+                                </Grid>
+                            </Border>
+                            <DataGrid RowHeight="40" uib:DataGridOptions.IsEnabled="True" x:Name="FilesGrid" Grid.Row="1" ItemsSource="{Binding Browser.Files}" SelectedItem="{Binding Browser.SelectedFile, Mode=TwoWay}" Tag="{Binding}" b:RowContextBehavior.SelectOnRightClick="True" AutoGenerateColumns="False" BorderBrush="{DynamicResource LineBrush}" Background="{DynamicResource SurfaceBrush}" AutomationProperties.Name="Files ordered by last change">
+                                <DataGrid.CellStyle>
+                                    <Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}"><Setter Property="Padding" Value="6,5"/></Style>
+                                </DataGrid.CellStyle>
+                                <DataGrid.GroupStyle><GroupStyle HeaderTemplate="{StaticResource GridGroupHeader}"/></DataGrid.GroupStyle>
+                                <DataGrid.ContextMenu>
+                                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
                                         <MenuItem Header="View file in browser" Command="{Binding Actions.OpenFileBrowserCommand}" CommandParameter="{Binding Browser.SelectedFile}"/>
                                         <Separator/>
                                         <MenuItem Header="Open in Explorer" Command="{Binding Actions.OpenExplorerCommand}" CommandParameter="{Binding Browser.SelectedFile}"/>
@@ -163,161 +355,494 @@
                                         <MenuItem Header="Copy path" Command="{Binding Actions.CopyPathCommand}" CommandParameter="{Binding Browser.SelectedFile}"/>
                                         <Separator/>
                                         <MenuItem Header="Link local checkout…" Command="{Binding Actions.LinkLocalFolderCommand}"/>
-                                    </ContextMenu></dxg:GridControl.ContextMenu>
-                                    <dxg:GridControl.View><dxg:TableView AutoWidth="True" AllowEditing="False" ShowGroupPanel="False" ShowIndicator="False" ShowVerticalLines="False" ShowHorizontalLines="True" NavigationStyle="Row" RowMinHeight="38" AllowPerPixelScrolling="True" ShowSearchPanelMode="Never"><dxg:TableView.FormatConditions><dxg:DataBarFormatCondition FieldName="TouchCount" PredefinedFormatName="GreenSolidDataBar"/></dxg:TableView.FormatConditions></dxg:TableView></dxg:GridControl.View>
-                                    <dxg:GridColumn FieldName="Path" Header="FILE" Width="230" MinWidth="145"><dxg:GridColumn.CellDisplayTemplate><DataTemplate><TextBlock Text="{Binding RowData.Row.Name}" Margin="8,0" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Value}"/></DataTemplate></dxg:GridColumn.CellDisplayTemplate></dxg:GridColumn>
-                                    <dxg:GridColumn FieldName="Folder" Header="FOLDER" Width="225" MinWidth="135"><dxg:GridColumn.CellDisplayTemplate><DataTemplate><DockPanel Margin="7,0" VerticalAlignment="Center" ToolTip="{Binding RowData.Row.Path}"><Image Source="{dx:SvgImageSource Uri=Assets/folder.svg}" Width="13" Height="13" Margin="0,0,7,0"/><TextBlock Text="{Binding Value}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/></DockPanel></DataTemplate></dxg:GridColumn.CellDisplayTemplate></dxg:GridColumn>
-                                    <dxg:GridColumn FieldName="ChangeType" Header="CHANGE" Width="88" CellDisplayTemplate="{StaticResource ChangeBadgeTemplate}"/>
-                                    <dxg:GridColumn FieldName="Age" Header="LAST CHANGED" Width="110" SortFieldName="LastChanged"><dxg:GridColumn.CellDisplayTemplate><DataTemplate><TextBlock Text="{Binding Value}" Margin="5,0" VerticalAlignment="Center" ToolTip="{Binding RowData.Row.LastChanged, StringFormat=F}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Style.Triggers><DataTrigger Binding="{Binding Value}" Value="Today"><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/></DataTrigger><DataTrigger Binding="{Binding Value}" Value="Yesterday"><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></DataTemplate></dxg:GridColumn.CellDisplayTemplate></dxg:GridColumn>
-                                    <dxg:GridColumn FieldName="Author" Header="AUTHOR" Width="130"/>
-                                    <dxg:GridColumn FieldName="Subject" Header="LATEST COMMIT" Width="230" MinWidth="130"/>
-                                    <dxg:GridColumn FieldName="TouchCount" Header="TOUCHES" Width="75"/>
-                                    <dxg:GridColumn FieldName="ShortSha" Header="COMMIT" Width="92" Visible="False"/>
-                                    <dxg:GridColumn FieldName="LastChanged" Header="COMMITTED AT" Width="150" Visible="False"><dxg:GridColumn.EditSettings><dxe:TextEditSettings DisplayFormat="g"/></dxg:GridColumn.EditSettings></dxg:GridColumn>
-                                    <dxg:GridColumn FieldName="AgeDays" Visible="False" ShowInColumnChooser="False"/>
-                                </dxg:GridControl>
-                                <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" Visibility="{Binding Browser.FilesCount, Converter={StaticResource EmptyVisibility}}" IsHitTestVisible="False" Margin="1,30,1,1"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20"><TextBlock Text="No files in this view" FontWeight="SemiBold" FontSize="18" HorizontalAlignment="Center"/><TextBlock Text="Try a wider date range, clear a filter, or connect a repository." Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel></Border>
-                                <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" Opacity="0.96" Visibility="{Binding Browser.IsBusy, Converter={StaticResource BoolVisibility}}"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><dx:WaitIndicator DeferedVisibility="{Binding Browser.IsBusy}" Content="Loading files…"/><TextBlock Text="Applying the selected branch, folder, and filters" FontSize="11" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" Margin="0,8"/><dx:SimpleButton Content="Cancel" Command="{Binding Browser.CancelQueryCommand}" Style="{StaticResource QuietButton}" HorizontalAlignment="Center"/></StackPanel></Border>
-                            </Grid>
-                        </dxdo:LayoutPanel>
-                        <dxdo:LayoutGroup x:Name="InspectionGroup" Orientation="Horizontal" ItemHeight="1.3*">
-                            <dxdo:LayoutPanel x:Name="HistoryPanel" Caption="FILE HISTORY" ItemWidth="310" AllowClose="False" AllowFloat="False">
-                                <Grid Background="{DynamicResource SurfaceBrush}"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                                    <Border Padding="12,5" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1"><DockPanel><dx:SimpleButton DockPanel.Dock="Right" Style="{StaticResource QuietButton}" Content="Copy path" Padding="6,2" MinHeight="25" Command="{Binding Details.CopyPathCommand}"/><TextBlock Text="{Binding Details.SelectedFile.Name}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/></DockPanel></Border>
-                                    <dxg:GridControl Grid.Row="1" x:Name="HistoryGrid" ItemsSource="{Binding Details.History}" SelectedItem="{Binding Details.SelectedChange, Mode=TwoWay}" Tag="{Binding}" b:RowContextBehavior.SelectOnRightClick="True" AutoGenerateColumns="None" BorderThickness="0" Background="{DynamicResource SurfaceBrush}" AutomationProperties.Name="Selected file history">
-                                        <dxg:GridControl.ContextMenu><ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}"><MenuItem Header="View commit in browser" Command="{Binding Actions.OpenCommitBrowserCommand}" CommandParameter="{Binding Details.SelectedChange}"/><MenuItem Header="Copy commit SHA" Command="{Binding Details.CopyShaCommand}"/><Separator/><MenuItem Header="Find associated pull requests" Command="{Binding Actions.LoadPullRequestsCommand}"/></ContextMenu></dxg:GridControl.ContextMenu>
-                                        <dxg:GridControl.View><dxg:TableView AutoWidth="True" AllowEditing="False" ShowGroupPanel="False" ShowColumnHeaders="False" ShowIndicator="False" NavigationStyle="Row" RowMinHeight="68" ShowVerticalLines="False" AllowSorting="False" AllowGrouping="False" ShowSearchPanelMode="Never"/></dxg:GridControl.View>
-                                        <dxg:GridColumn FieldName="Subject" AllowSorting="False" AllowColumnFiltering="False"><dxg:GridColumn.CellDisplayTemplate><DataTemplate><StackPanel Margin="9,7"><TextBlock Text="{Binding Value}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><StackPanel Orientation="Horizontal" Margin="0,6,0,0"><TextBlock Text="{Binding RowData.Row.ShortSha}" Style="{StaticResource Mono}" Foreground="{DynamicResource AccentBrush}" FontSize="10"/><TextBlock Text="  ·  " Foreground="{DynamicResource QuietBrush}" FontSize="10"/><TextBlock Text="{Binding RowData.Row.Author}" Foreground="{DynamicResource MutedBrush}" FontSize="10" TextTrimming="CharacterEllipsis" MaxWidth="120"/></StackPanel><TextBlock Text="{Binding RowData.Row.LocalDate, StringFormat='MMM d, yyyy · h:mm tt'}" FontSize="10" Foreground="{DynamicResource QuietBrush}" Margin="0,4,0,0"/></StackPanel></DataTemplate></dxg:GridColumn.CellDisplayTemplate></dxg:GridColumn>
-                                    </dxg:GridControl>
-                                    <TextBlock Grid.Row="1" Text="Select a file to trace its history." TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="20" Visibility="{Binding Details.HasSelection, Converter={StaticResource InverseVisibility}}"/>
-                                </Grid>
-                            </dxdo:LayoutPanel>
-                            <dxdo:LayoutPanel x:Name="DiffPanel" Caption="CHANGE INSPECTOR" ItemWidth="*" AllowClose="False" AllowFloat="False">
-                                <Grid Background="{DynamicResource SurfaceBrush}"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                                    <Border Padding="12,4" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1"><DockPanel><dx:SimpleButton DockPanel.Dock="Right" Style="{StaticResource QuietButton}" Content="Copy SHA" Padding="6,2" MinHeight="25" Command="{Binding Details.CopyShaCommand}"/><TextBlock Text="{Binding Details.DiffSummary}" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding Details.DiffSummary}"/></DockPanel></Border>
-                                    <dx:DXTabControl Grid.Row="1" TabContentCacheMode="CacheAllTabs" Background="{DynamicResource SurfaceBrush}" BorderThickness="0">
-                                        <dx:DXTabItem Header="Unified diff">
-                                            <dxg:GridControl x:Name="DiffGrid" ItemsSource="{Binding Details.DiffLines, Converter={StaticResource DiffBody}}" AutoGenerateColumns="None" BorderThickness="0" Background="{DynamicResource SurfaceBrush}" AutomationProperties.Name="Read only unified diff">
-                                                <dxg:GridControl.View><dxg:TableView AutoWidth="False" AllowEditing="False" ShowGroupPanel="False" ShowColumnHeaders="False" ShowIndicator="False" ShowHorizontalLines="False" ShowVerticalLines="False" AllowSorting="False" AllowGrouping="False" ShowSearchPanelMode="Never" NavigationStyle="Row" RowMinHeight="23" AllowPerPixelScrolling="True"/></dxg:GridControl.View>
-                                                <dxg:GridColumn FieldName="OldLine" Width="45" FixedWidth="True" AllowSorting="False" AllowGrouping="False" AllowColumnFiltering="False"><dxg:GridColumn.CellDisplayTemplate><DataTemplate><TextBlock Text="{Binding Value}" Style="{StaticResource Mono}" Foreground="{DynamicResource QuietBrush}" FontSize="11" HorizontalAlignment="Right" Margin="0,0,7,0"/></DataTemplate></dxg:GridColumn.CellDisplayTemplate></dxg:GridColumn>
-                                                <dxg:GridColumn FieldName="NewLine" Width="45" FixedWidth="True" AllowSorting="False" AllowGrouping="False" AllowColumnFiltering="False"><dxg:GridColumn.CellDisplayTemplate><DataTemplate><TextBlock Text="{Binding Value}" Style="{StaticResource Mono}" Foreground="{DynamicResource QuietBrush}" FontSize="11" HorizontalAlignment="Right" Margin="0,0,7,0"/></DataTemplate></dxg:GridColumn.CellDisplayTemplate></dxg:GridColumn>
-                                                <dxg:GridColumn FieldName="Marker" Width="24" FixedWidth="True" AllowSorting="False" AllowGrouping="False" AllowColumnFiltering="False" CellDisplayTemplate="{StaticResource DiffTextTemplate}"/>
-                                                <dxg:GridColumn FieldName="Text" Width="1800" AllowSorting="False" AllowGrouping="False" AllowColumnFiltering="False" CellDisplayTemplate="{StaticResource DiffTextTemplate}"/>
-                                            </dxg:GridControl>
-                                        </dx:DXTabItem>
-                                        <dx:DXTabItem Header="Commit details"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="17,12">
-                                            <dx:SimpleButton Content="↗  View commit in browser" Command="{Binding Actions.OpenCommitBrowserCommand}" CommandParameter="{Binding Details.SelectedChange}" HorizontalAlignment="Left" Style="{StaticResource ActionButton}" Margin="0,0,0,14"/>
-                                            <TextBlock Text="{Binding Details.SelectedChange.Subject}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,15"/>
-                                            <TextBlock Text="COMMIT" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding Details.SelectedChange.Commit.Oid}" Style="{StaticResource Mono}" TextWrapping="Wrap" Margin="0,4,0,10"/>
-                                            <TextBlock Text="AUTHOR" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding Details.SelectedChange.Author}" Margin="0,4,0,10"/>
-                                            <TextBlock Text="COMMITTED AT" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding Details.SelectedChange.LocalDate, StringFormat=F}" Margin="0,4,0,10"/>
-                                            <TextBlock Text="PATH" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding Details.SelectedChange.Path}" Style="{StaticResource Mono}" TextWrapping="Wrap" Margin="0,4,0,10"/>
-                                            <TextBlock Text="PREVIOUS PATH (WHEN RENAMED)" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding Details.SelectedChange.OldPath}" Style="{StaticResource Mono}" TextWrapping="Wrap" Margin="0,4,0,10"/>
-                                        </StackPanel></ScrollViewer></dx:DXTabItem>
-                                        <dx:DXTabItem Header="Pull requests"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                                            <DockPanel Margin="15,12"><dx:SimpleButton DockPanel.Dock="Right" Content="Find pull requests" Command="{Binding Actions.LoadPullRequestsCommand}" Style="{StaticResource ActionButton}"/><TextBlock Text="{Binding Actions.PullRequestStatus}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,0,15,0"/></DockPanel>
-                                            <ListBox Grid.Row="1" ItemsSource="{Binding Actions.PullRequests}" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Pull requests associated with selected commit"><ListBox.ItemTemplate><DataTemplate><dx:SimpleButton Command="{Binding DataContext.Actions.OpenPullRequestCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" Style="{StaticResource QuietButton}" HorizontalContentAlignment="Stretch"><StackPanel><TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/><StackPanel Orientation="Horizontal" Margin="0,4,0,0"><TextBlock Text="{Binding Number, StringFormat='#{0}'}" Foreground="{DynamicResource AccentBrush}" FontSize="11"/><TextBlock Text="{Binding State}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="10,0"/><TextBlock Text="{Binding Author}" Foreground="{DynamicResource QuietBrush}" FontSize="11"/></StackPanel></StackPanel></dx:SimpleButton></DataTemplate></ListBox.ItemTemplate></ListBox>
-                                            <Border Grid.RowSpan="2" Background="{DynamicResource SurfaceBrush}" Opacity="0.96" Visibility="{Binding Actions.IsLoadingPullRequests, Converter={StaticResource BoolVisibility}}"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><dx:WaitIndicator DeferedVisibility="{Binding Actions.IsLoadingPullRequests}" Content="Loading pull requests…"/><dx:SimpleButton Content="Cancel" Command="{Binding Actions.CancelPullRequestsCommand}" Style="{StaticResource QuietButton}" HorizontalAlignment="Center" Margin="0,10,0,0"/></StackPanel></Border>
-                                        </Grid></dx:DXTabItem>
-                                    </dx:DXTabControl>
-                                    <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" Visibility="{Binding Details.HasSelection, Converter={StaticResource InverseVisibility}}"><StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="25"><TextBlock Text="Every change has a story." FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/><TextBlock Text="Select a file, then a commit to see exactly what changed." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0"/></StackPanel></Border>
-                                    <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" Opacity="0.96" Visibility="{Binding Details.IsBusy, Converter={StaticResource BoolVisibility}}"><dx:WaitIndicator DeferedVisibility="{Binding Details.IsBusy}" Content="Loading change…"/></Border>
-                                </Grid>
-                            </dxdo:LayoutPanel>
-                        </dxdo:LayoutGroup>
-                    </dxdo:LayoutGroup>
-                </dxdo:DockLayoutManager>
-                <Border Grid.Row="4" Background="{DynamicResource SurfaceBrush}" Opacity="0.97" CornerRadius="7" Visibility="{Binding Workspace.IsBusy, Converter={StaticResource BoolVisibility}}">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="550" Margin="25"><dx:WaitIndicator DeferedVisibility="{Binding Workspace.IsBusy}" Content="Loading workspace…"/><TextBlock Text="{Binding Workspace.ProgressText}" TextWrapping="Wrap" TextAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="0,12"/><dx:SimpleButton Content="Cancel loading" Command="{Binding Workspace.RefreshCancelCommand}" HorizontalAlignment="Center" Style="{StaticResource ActionButton}"/></StackPanel>
-                </Border>
-                <Border Grid.Row="4" Background="{DynamicResource SurfaceBrush}" Opacity="0.97" CornerRadius="7" Visibility="{Binding Actions.IsBusy, Converter={StaticResource BoolVisibility}}"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><dx:WaitIndicator DeferedVisibility="{Binding Actions.IsBusy}" Content="Loading…"/><TextBlock Text="{Binding Actions.Status}" Foreground="{DynamicResource MutedBrush}" Margin="0,10" TextWrapping="Wrap"/></StackPanel></Border>
-            </Grid>
-            <Border Grid.Row="2" Grid.ColumnSpan="2" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="20,0"><DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding Workspace.LastUpdated}" Foreground="{DynamicResource QuietBrush}" FontSize="10"/><StackPanel Orientation="Horizontal"><Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}" Margin="0,0,8,0"/><TextBlock Text="{Binding Workspace.Status}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/></StackPanel></DockPanel></Border>
-        </Grid>
-        <Grid Background="#AB050B10" Visibility="{Binding Workspace.IsConnectOpen, Converter={StaticResource BoolVisibility}}" KeyboardNavigation.TabNavigation="Cycle">
-            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Width="555" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="30"><StackPanel>
-                <DockPanel><dx:SimpleButton DockPanel.Dock="Right" Content="✕" Style="{StaticResource QuietButton}" Command="{Binding Workspace.CloseConnectCommand}" Padding="8,4" AutomationProperties.Name="Close connect repository"/><TextBlock Text="Connect a repository" FontSize="24" FontWeight="SemiBold"/></DockPanel>
-                <TextBlock Text="Bring its entire story into focus." Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,23"/>
-                <Border Background="{DynamicResource ElevatedBrush}" CornerRadius="6" Padding="12" Margin="0,0,0,20"><DockPanel><dx:SimpleButton DockPanel.Dock="Right" Content="Import…" Command="{Binding OpenImportCommand}" Style="{StaticResource ActionButton}" Margin="12,0,0,0"/><TextBlock Text="Browse your GitHub or Azure DevOps repositories, including private projects." TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource MutedBrush}"/></DockPanel></Border>
-                <TextBlock Text="REMOTE URL" Style="{StaticResource Eyebrow}" Margin="0,0,0,8"/>
-                <dxe:TextEdit EditValue="{Binding Workspace.RemoteUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" NullText="https://github.com/owner/repository.git" MinHeight="42" b:FocusBehavior.FocusWhenVisible="True" AutomationProperties.Name="Git remote URL"><dxe:TextEdit.InputBindings><KeyBinding Key="Enter" Command="{Binding Workspace.ConnectCommand}"/></dxe:TextEdit.InputBindings></dxe:TextEdit>
-                <TextBlock Text="GitHub, Azure DevOps, and other HTTPS or SSH Git remotes. Private repositories use your existing Git Credential Manager or SSH sign-in." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,10,0,21"/>
-                <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto" Visibility="{Binding Workspace.HasError, Converter={StaticResource BoolVisibility}}" Margin="0,0,0,14"><TextBlock Text="{Binding Workspace.Error}" Foreground="{DynamicResource DeletedBrush}" TextWrapping="Wrap"/></ScrollViewer>
-                <TextBlock Text="{Binding Workspace.ProgressText}" TextWrapping="Wrap" Foreground="{DynamicResource AccentBrush}" Visibility="{Binding Workspace.IsBusy, Converter={StaticResource BoolVisibility}}" Margin="0,0,0,12"/>
-                <StackPanel Visibility="{Binding Workspace.IsBusy, Converter={StaticResource BoolVisibility}}" Margin="0,0,0,15"><TextBlock Text="Loading repository…" FontWeight="SemiBold" Margin="0,0,0,7"/><dxe:ProgressBarEdit Height="3"><dxe:ProgressBarEdit.StyleSettings><dxe:ProgressBarMarqueeStyleSettings/></dxe:ProgressBarEdit.StyleSettings></dxe:ProgressBarEdit></StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><dx:SimpleButton Content="Cancel" Command="{Binding Workspace.CloseConnectCommand}" Style="{StaticResource ActionButton}" Margin="0,0,10,0"/><dx:SimpleButton Content="Connect repository" Command="{Binding Workspace.ConnectCommand}" Style="{StaticResource PrimaryButton}"/></StackPanel>
-            </StackPanel></Border>
-        </Grid>
-        <Grid Background="#AB050B10" Visibility="{Binding Settings.IsOpen, Converter={StaticResource BoolVisibility}}" KeyboardNavigation.TabNavigation="Cycle">
-            <Border Style="{StaticResource OverlayCard}" Width="650" MaxHeight="750" Margin="20">
-                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                    <DockPanel Margin="0,0,0,20"><dx:SimpleButton DockPanel.Dock="Right" Content="✕" Style="{StaticResource QuietButton}" Command="{Binding Settings.CloseCommand}" Padding="8,4" AutomationProperties.Name="Close settings"/><StackPanel><TextBlock Text="Make it your workspace" FontSize="23" FontWeight="SemiBold"/><TextBlock Text="Settings are saved for your next session." Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,6,0,0"/></StackPanel></DockPanel>
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><StackPanel>
-                        <TextBlock Text="APPEARANCE &amp; BROWSING" Style="{StaticResource Eyebrow}" Margin="0,0,0,12"/>
-                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                            <StackPanel Margin="0,0,12,0"><TextBlock Text="Theme" Margin="0,0,0,6"/><dxe:ComboBoxEdit ItemsSource="{Binding Settings.Themes}" EditValue="{Binding Settings.Theme, Mode=TwoWay}" IsTextEditable="False" MinHeight="34" b:FocusBehavior.FocusWhenVisible="True" AutomationProperties.Name="Appearance theme"/></StackPanel>
-                            <StackPanel Grid.Column="1"><TextBlock Text="Default recent period" Margin="0,0,0,6"/><dxe:ComboBoxEdit ItemsSource="{Binding Settings.DatePresets}" EditValue="{Binding Settings.DefaultDatePreset, Mode=TwoWay}" IsTextEditable="False" MinHeight="34" AutomationProperties.Name="Default recent date range"/></StackPanel>
+                                    </ContextMenu>
+                                </DataGrid.ContextMenu>
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="File" Width="1.1*" SortMemberPath="Path" MinWidth="180">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Name}" Margin="8,0" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="Folder" Width="1.1*" SortMemberPath="Folder" MinWidth="150">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="7,0" VerticalAlignment="Center" ToolTip="{Binding Path}">
+                                                    <Image Source="{StaticResource FolderIcon}" Width="13" Height="13" Margin="0,0,7,0"/>
+                                                    <TextBlock Text="{Binding Folder}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="Change" Width="88" MinWidth="88" SortMemberPath="ChangeType" CellTemplate="{StaticResource ChangeBadgeTemplate}"/>
+                                    <DataGridTemplateColumn Header="Last changed" Width="110" MinWidth="110" SortMemberPath="LastChanged">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Age}" Margin="5,0" VerticalAlignment="Center" ToolTip="{Binding LastChanged, StringFormat=F}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Age}" Value="Today">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Age}" Value="Yesterday">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Author" Width="130" MinWidth="120" SortMemberPath="Author" Binding="{Binding Author}"/>
+                                    <DataGridTextColumn Header="Latest commit" Width="*" SortMemberPath="Subject" MinWidth="180" Binding="{Binding Subject}"/>
+                                    <DataGridTextColumn Header="Touches" Width="75" MinWidth="75" SortMemberPath="TouchCount" Binding="{Binding TouchCount}"/>
+                                    <DataGridTextColumn Header="Commit" Width="92" SortMemberPath="ShortSha" Visibility="Collapsed" Binding="{Binding ShortSha}"/>
+                                    <DataGridTextColumn Header="Committed at" Width="150" SortMemberPath="LastChanged" Visibility="Collapsed" Binding="{Binding LastChanged}"/>
+                                    <DataGridTextColumn Header="Age in days" Width="*" SortMemberPath="AgeDays" Visibility="Collapsed" Binding="{Binding AgeDays}"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" Visibility="{Binding Browser.FilesCount, Converter={StaticResource EmptyVisibility}}" IsHitTestVisible="False" Margin="1,30,1,1">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
+                                    <TextBlock Text="No files in this view" FontWeight="SemiBold" FontSize="18" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Try a wider date range, clear a filter, or connect a repository." Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0" TextWrapping="Wrap" TextAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" Opacity="0.96" Visibility="{Binding Browser.IsBusy, Converter={StaticResource BoolVisibility}}">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <ui:BusyIndicator Content="Loading files…"/>
+                                    <TextBlock Text="Applying the selected branch, folder, and filters" FontSize="11" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" Margin="0,8"/>
+                                    <Button Content="Cancel" Command="{Binding Browser.CancelQueryCommand}" Style="{StaticResource QuietButton}" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
                         </Grid>
-                        <CheckBox Content="Show activity summary and date chart" IsChecked="{Binding Settings.ShowActivityChart}" Margin="0,17,0,13"/>
-                        <CheckBox Content="Refresh repositories when opened" IsChecked="{Binding Settings.RefreshOnOpen}" Margin="0,0,0,6"/>
-                        <TextBlock Text="Turn this off to browse cached history first. Refresh remains available with F5." FontSize="11" Foreground="{DynamicResource QuietBrush}" TextWrapping="Wrap" Margin="22,0,0,13"/>
-                        <CheckBox Content="Automatically look up pull requests for selected commits" IsChecked="{Binding Settings.AutoLoadPullRequests}" Margin="0,0,0,6"/>
-                        <TextBlock Text="Uses your provider sign-in and may make a network request on each selection." FontSize="11" Foreground="{DynamicResource QuietBrush}" TextWrapping="Wrap" Margin="22,0,0,20"/>
-                        <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="0,18,0,0"><StackPanel>
-                            <TextBlock Text="LOCAL TOOLS" Style="{StaticResource Eyebrow}" Margin="0,0,0,12"/>
-                            <TextBlock Text="Cursor executable" Margin="0,0,0,6"/>
-                            <dxe:TextEdit EditValue="{Binding Settings.CursorCommand, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" NullText="cursor" MinHeight="34" AutomationProperties.Name="Cursor executable"/><TextBlock Text="Use cursor or the full path to Cursor.exe, without arguments." FontSize="11" Foreground="{DynamicResource QuietBrush}" Margin="0,7,0,0"/>
-                            <TextBlock Text="Local checkout for the active workspace" Margin="0,14,0,6"/>
-                            <TextBlock Text="{Binding Actions.LocalFolder}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Actions.LocalFolder}" FontSize="12" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,8"/>
-                            <TextBlock Text="Link an existing checkout to open files in Explorer or Cursor." FontSize="11" Foreground="{DynamicResource QuietBrush}" Margin="0,0,0,10"/>
-                            <WrapPanel><dx:SimpleButton Content="Link checkout…" Command="{Binding Actions.LinkLocalFolderCommand}" Style="{StaticResource ActionButton}" Margin="0,0,8,0"/><dx:SimpleButton Content="Unlink" Command="{Binding Actions.UnlinkLocalFolderCommand}" Style="{StaticResource QuietButton}" Margin="0,0,8,0"/><dx:SimpleButton Content="Copy remote URL" Command="{Binding Actions.CopyRemoteUrlCommand}" Style="{StaticResource QuietButton}"/></WrapPanel>
-                        </StackPanel></Border>
-                        <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Margin="0,20,0,0" Padding="0,15,0,0"><WrapPanel><dx:SimpleButton Content="Reset layout" Command="{Binding ResetLayoutCommand}" Style="{StaticResource QuietButton}"/><dx:SimpleButton Content="Open app data" Command="{Binding Settings.OpenDataFolderCommand}" Style="{StaticResource QuietButton}"/><dx:SimpleButton Content="Remove workspace" Command="{Binding Workspace.RemoveRepositoryCommand}" Style="{StaticResource QuietButton}" Foreground="{DynamicResource DeletedBrush}"/></WrapPanel></Border>
-                        <TextBlock Text="{Binding Settings.Error}" Foreground="{DynamicResource DeletedBrush}" TextWrapping="Wrap" Margin="0,12,0,0" Visibility="{Binding Settings.Error, Converter={StaticResource NonEmptyVisibility}}"/>
-                        <TextBlock Text="{Binding Actions.Error}" Foreground="{DynamicResource DeletedBrush}" TextWrapping="Wrap" Margin="0,12,0,0" Visibility="{Binding Actions.Error, Converter={StaticResource NonEmptyVisibility}}"/>
-                    </StackPanel></ScrollViewer>
-                    <dx:SimpleButton Grid.Row="2" Content="Done" Command="{Binding Settings.CloseCommand}" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" MinWidth="85" Margin="0,20,0,0"/>
+                    </Border>
+                    <ui:Pane x:Name="HistoryPanel" ui:WorkspaceLayout.Region="History" Header="File history" Padding="0">
+                        <Grid Background="{DynamicResource SurfaceBrush}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Padding="12,5" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource QuietButton}" Content="Copy path" Padding="6,2" MinHeight="25" Command="{Binding Details.CopyPathCommand}"/>
+                                    <TextBlock Text="{Binding Details.SelectedFile.Name}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                </DockPanel>
+                            </Border>
+                            <DataGrid RowHeight="74" HeadersVisibility="None" uib:StarColumnSizing.IsEnabled="True" CanUserSortColumns="False" CanUserReorderColumns="False" Grid.Row="1" x:Name="HistoryGrid" ItemsSource="{Binding Details.History}" SelectedItem="{Binding Details.SelectedChange, Mode=TwoWay}" Tag="{Binding}" b:RowContextBehavior.SelectOnRightClick="True" AutoGenerateColumns="False" BorderThickness="0" Background="{DynamicResource SurfaceBrush}" AutomationProperties.Name="Selected file history">
+                                    <DataGrid.CellStyle>
+                                        <Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}"><Setter Property="Padding" Value="0"/></Style>
+                                    </DataGrid.CellStyle>
+                                <DataGrid.ContextMenu>
+                                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                        <MenuItem Header="View commit in browser" Command="{Binding Actions.OpenCommitBrowserCommand}" CommandParameter="{Binding Details.SelectedChange}"/>
+                                        <MenuItem Header="Copy commit SHA" Command="{Binding Details.CopyShaCommand}"/>
+                                        <Separator/>
+                                        <MenuItem Header="Find associated pull requests" Command="{Binding Actions.LoadPullRequestsCommand}"/>
+                                    </ContextMenu>
+                                </DataGrid.ContextMenu>
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="Subject" Width="*" SortMemberPath="Subject">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="9,7">
+                                                    <TextBlock Text="{Binding Subject}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                                        <TextBlock Text="{Binding ShortSha}" Style="{StaticResource Mono}" Foreground="{DynamicResource AccentBrush}" FontSize="10"/>
+                                                        <TextBlock Text="  ·  " Foreground="{DynamicResource QuietBrush}" FontSize="10"/>
+                                                        <TextBlock Text="{Binding Author}" Foreground="{DynamicResource MutedBrush}" FontSize="10" TextTrimming="CharacterEllipsis" MaxWidth="120"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding LocalDate, StringFormat='MMM d, yyyy · h:mm tt'}" FontSize="10" Foreground="{DynamicResource QuietBrush}" Margin="0,4,0,0"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <TextBlock Grid.Row="1" Text="Select a file to trace its history." TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="20" Visibility="{Binding Details.HasSelection, Converter={StaticResource InverseVisibility}}"/>
+                        </Grid>
+                    </ui:Pane>
+                    <ui:Pane x:Name="DiffPanel" ui:WorkspaceLayout.Region="Inspector" Header="Change inspector" Padding="0">
+                        <Grid Background="{DynamicResource SurfaceBrush}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Padding="12,4" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource QuietButton}" Content="Copy SHA" Padding="6,2" MinHeight="25" Command="{Binding Details.CopyShaCommand}"/>
+                                    <TextBlock Text="{Binding Details.DiffSummary}" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding Details.DiffSummary}"/>
+                                </DockPanel>
+                            </Border>
+                            <TabControl Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderThickness="0">
+                                <TabItem Header="Unified diff">
+                                    <DataGrid MinRowHeight="24" RowHeight="24" SelectionUnit="FullRow" HeadersVisibility="None" CanUserSortColumns="False" CanUserReorderColumns="False" x:Name="DiffGrid" RowBackground="Transparent" AlternatingRowBackground="Transparent" ItemsSource="{Binding Details.DiffLines, Converter={StaticResource DiffBody}}" AutoGenerateColumns="False" BorderThickness="0" Background="{DynamicResource SurfaceBrush}" AutomationProperties.Name="Read only unified diff">
+                                            <DataGrid.CellStyle>
+                                                <Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}"><Setter Property="Padding" Value="0"/></Style>
+                                            </DataGrid.CellStyle>
+                                            <DataGrid.RowStyle>
+                                                <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}"><Setter Property="BorderThickness" Value="0"/></Style>
+                                            </DataGrid.RowStyle>
+                                        <DataGrid.Columns>
+                                            <DataGridTemplateColumn Header="Old line" Width="45" SortMemberPath="OldLine">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding OldLine}" Style="{StaticResource Mono}" Foreground="{DynamicResource QuietBrush}" FontSize="11" HorizontalAlignment="Right" Margin="0,0,7,0"/>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Header="New line" Width="45" SortMemberPath="NewLine">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding NewLine}" Style="{StaticResource Mono}" Foreground="{DynamicResource QuietBrush}" FontSize="11" HorizontalAlignment="Right" Margin="0,0,7,0"/>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Header="Marker" Width="24" SortMemberPath="Marker" CellTemplate="{StaticResource DiffMarkerTemplate}"/>
+                                            <DataGridTemplateColumn Header="Text" Width="1800" SortMemberPath="Text" CellTemplate="{StaticResource DiffTextTemplate}"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </TabItem>
+                                <TabItem Header="Commit details">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <StackPanel Margin="17,12">
+                                            <Button Content="↗  View commit in browser" Command="{Binding Actions.OpenCommitBrowserCommand}" CommandParameter="{Binding Details.SelectedChange}" HorizontalAlignment="Left" Style="{StaticResource ActionButton}" Margin="0,0,0,14"/>
+                                            <TextBlock Text="{Binding Details.SelectedChange.Subject}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,15"/>
+                                            <TextBlock Text="Commit" Style="{StaticResource Eyebrow}"/>
+                                            <TextBlock Text="{Binding Details.SelectedChange.Commit.Oid}" Style="{StaticResource Mono}" TextWrapping="Wrap" Margin="0,4,0,10"/>
+                                            <TextBlock Text="Author" Style="{StaticResource Eyebrow}"/>
+                                            <TextBlock Text="{Binding Details.SelectedChange.Author}" Margin="0,4,0,10"/>
+                                            <TextBlock Text="Committed at" Style="{StaticResource Eyebrow}"/>
+                                            <TextBlock Text="{Binding Details.SelectedChange.LocalDate, StringFormat=F}" Margin="0,4,0,10"/>
+                                            <TextBlock Text="Path" Style="{StaticResource Eyebrow}"/>
+                                            <TextBlock Text="{Binding Details.SelectedChange.Path}" Style="{StaticResource Mono}" TextWrapping="Wrap" Margin="0,4,0,10"/>
+                                            <TextBlock Text="Previous path (when renamed)" Style="{StaticResource Eyebrow}"/>
+                                            <TextBlock Text="{Binding Details.SelectedChange.OldPath}" Style="{StaticResource Mono}" TextWrapping="Wrap" Margin="0,4,0,10"/>
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </TabItem>
+                                <TabItem Header="Pull requests">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+                                        <DockPanel Margin="15,12">
+                                            <Button DockPanel.Dock="Right" Content="Find pull requests" Command="{Binding Actions.LoadPullRequestsCommand}" Style="{StaticResource ActionButton}"/>
+                                            <TextBlock Text="{Binding Actions.PullRequestStatus}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,0,15,0"/>
+                                        </DockPanel>
+                                        <ListBox Grid.Row="1" ItemsSource="{Binding Actions.PullRequests}" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Pull requests associated with selected commit">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Command="{Binding DataContext.Actions.OpenPullRequestCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" Style="{StaticResource QuietButton}" HorizontalContentAlignment="Stretch">
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                                <TextBlock Text="{Binding Number, StringFormat='#{0}'}" Foreground="{DynamicResource AccentBrush}" FontSize="11"/>
+                                                                <TextBlock Text="{Binding State}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="10,0"/>
+                                                                <TextBlock Text="{Binding Author}" Foreground="{DynamicResource QuietBrush}" FontSize="11"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                        <Border Grid.RowSpan="2" Background="{DynamicResource SurfaceBrush}" Opacity="0.96" Visibility="{Binding Actions.IsLoadingPullRequests, Converter={StaticResource BoolVisibility}}">
+                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <ui:BusyIndicator Content="Loading pull requests…"/>
+                                                <Button Content="Cancel" Command="{Binding Actions.CancelPullRequestsCommand}" Style="{StaticResource QuietButton}" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </TabItem>
+                            </TabControl>
+                            <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" Visibility="{Binding Details.HasSelection, Converter={StaticResource InverseVisibility}}">
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="25">
+                                    <TextBlock Text="Inspect a change" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Select a file, then a commit to see exactly what changed." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" Opacity="0.96" Visibility="{Binding Details.IsBusy, Converter={StaticResource BoolVisibility}}">
+                                <ui:BusyIndicator Content="Loading change…"/>
+                            </Border>
+                        </Grid>
+                    </ui:Pane>
+                </ui:WorkspaceLayout>
+                <Border Grid.Row="4" Background="{DynamicResource SurfaceBrush}" Opacity="0.97" CornerRadius="7" Visibility="{Binding Workspace.IsBusy, Converter={StaticResource BoolVisibility}}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="550" Margin="25">
+                        <ui:BusyIndicator Content="Loading workspace…"/>
+                        <TextBlock Text="{Binding Workspace.ProgressText}" TextWrapping="Wrap" TextAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="0,12"/>
+                        <Button Content="Cancel loading" Command="{Binding Workspace.RefreshCancelCommand}" HorizontalAlignment="Center" Style="{StaticResource ActionButton}"/>
+                    </StackPanel>
+                </Border>
+                <Border Grid.Row="4" Background="{DynamicResource SurfaceBrush}" Opacity="0.97" CornerRadius="7" Visibility="{Binding Actions.IsBusy, Converter={StaticResource BoolVisibility}}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <ui:BusyIndicator Content="Loading…"/>
+                        <TextBlock Text="{Binding Actions.Status}" Foreground="{DynamicResource MutedBrush}" Margin="0,10" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+            <Border Grid.Row="2" Grid.ColumnSpan="2" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="20,0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding Workspace.LastUpdated}" Foreground="{DynamicResource QuietBrush}" FontSize="10"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding Workspace.Status}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
+        <Grid Background="{DynamicResource OverlayBrush}" Visibility="{Binding Workspace.IsConnectOpen, Converter={StaticResource BoolVisibility}}" KeyboardNavigation.TabNavigation="Cycle">
+            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Width="555" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="30">
+                <StackPanel>
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource QuietButton}" Command="{Binding Workspace.CloseConnectCommand}" Padding="8,4" AutomationProperties.Name="Close connect repository"/>
+                        <TextBlock Text="Connect a repository" FontSize="24" FontWeight="SemiBold"/>
+                    </DockPanel>
+                    <TextBlock Text="Browse its files, commits, and history in one workspace." Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,23"/>
+                    <Border Background="{DynamicResource ElevatedBrush}" CornerRadius="6" Padding="12" Margin="0,0,0,20">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Import…" Command="{Binding OpenImportCommand}" Style="{StaticResource ActionButton}" Margin="12,0,0,0"/>
+                            <TextBlock Text="Browse your GitHub or Azure DevOps repositories, including private projects." TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource MutedBrush}"/>
+                        </DockPanel>
+                    </Border>
+                    <TextBlock Text="Remote url" Style="{StaticResource Eyebrow}" Margin="0,0,0,8"/>
+                    <ui:SearchBox ShowSearchIcon="False" Text="{Binding Workspace.RemoteUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Placeholder="https://github.com/owner/repository.git" MinHeight="42" b:FocusBehavior.FocusWhenVisible="True" AutomationProperties.Name="Git remote URL">
+                        <ui:SearchBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding Workspace.ConnectCommand}"/>
+                        </ui:SearchBox.InputBindings>
+                    </ui:SearchBox>
+                    <TextBlock Text="GitHub, Azure DevOps, and other HTTPS or SSH Git remotes. Private repositories use your existing Git Credential Manager or SSH sign-in." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,10,0,21"/>
+                    <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto" Visibility="{Binding Workspace.HasError, Converter={StaticResource BoolVisibility}}" Margin="0,0,0,14">
+                        <TextBlock Text="{Binding Workspace.Error}" Foreground="{DynamicResource DeletedBrush}" TextWrapping="Wrap"/>
+                    </ScrollViewer>
+                    <TextBlock Text="{Binding Workspace.ProgressText}" TextWrapping="Wrap" Foreground="{DynamicResource AccentBrush}" Visibility="{Binding Workspace.IsBusy, Converter={StaticResource BoolVisibility}}" Margin="0,0,0,12"/>
+                    <StackPanel Visibility="{Binding Workspace.IsBusy, Converter={StaticResource BoolVisibility}}" Margin="0,0,0,15">
+                        <TextBlock Text="Loading repository…" FontWeight="SemiBold" Margin="0,0,0,7"/>
+                        <ProgressBar IsIndeterminate="True" Height="3"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Command="{Binding Workspace.CloseConnectCommand}" Style="{StaticResource ActionButton}" Margin="0,0,10,0"/>
+                        <Button Content="Connect repository" Command="{Binding Workspace.ConnectCommand}" Style="{StaticResource PrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+        <Grid Background="{DynamicResource OverlayBrush}" Visibility="{Binding Settings.IsOpen, Converter={StaticResource BoolVisibility}}" KeyboardNavigation.TabNavigation="Cycle">
+            <Border Style="{StaticResource OverlayCard}" Width="650" MaxHeight="750" Margin="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Margin="0,0,0,20">
+                        <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource QuietButton}" Command="{Binding Settings.CloseCommand}" Padding="8,4" AutomationProperties.Name="Close settings"/>
+                        <StackPanel>
+                            <TextBlock Text="Make it your workspace" FontSize="23" FontWeight="SemiBold"/>
+                            <TextBlock Text="Settings are saved for your next session." Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </DockPanel>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock Text="Appearance &amp; browsing" Style="{StaticResource Eyebrow}" Margin="0,0,0,12"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock Text="Theme" Margin="0,0,0,6"/>
+                                    <ComboBox ItemsSource="{Binding Settings.Themes}" SelectedItem="{Binding Settings.Theme, Mode=TwoWay}" IsEditable="False" MinHeight="34" b:FocusBehavior.FocusWhenVisible="True" AutomationProperties.Name="Appearance theme"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Default recent period" Margin="0,0,0,6"/>
+                                    <ComboBox ItemsSource="{Binding Settings.DatePresets}" SelectedItem="{Binding Settings.DefaultDatePreset, Mode=TwoWay}" IsEditable="False" MinHeight="34" AutomationProperties.Name="Default recent date range"/>
+                                </StackPanel>
+                            </Grid>
+                            <CheckBox Content="Show activity summary and date chart" IsChecked="{Binding Settings.ShowActivityChart}" Margin="0,17,0,13"/>
+                            <CheckBox Content="Refresh repositories when opened" IsChecked="{Binding Settings.RefreshOnOpen}" Margin="0,0,0,6"/>
+                            <TextBlock Text="Turn this off to browse cached history first. Refresh remains available with F5." FontSize="11" Foreground="{DynamicResource QuietBrush}" TextWrapping="Wrap" Margin="22,0,0,13"/>
+                            <CheckBox Content="Automatically look up pull requests for selected commits" IsChecked="{Binding Settings.AutoLoadPullRequests}" Margin="0,0,0,6"/>
+                            <TextBlock Text="Uses your provider sign-in and may make a network request on each selection." FontSize="11" Foreground="{DynamicResource QuietBrush}" TextWrapping="Wrap" Margin="22,0,0,20"/>
+                            <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="0,18,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Local tools" Style="{StaticResource Eyebrow}" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Cursor executable" Margin="0,0,0,6"/>
+                                    <ui:SearchBox ShowSearchIcon="False" Text="{Binding Settings.CursorCommand, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Placeholder="cursor" MinHeight="34" AutomationProperties.Name="Cursor executable"/>
+                                    <TextBlock Text="Use cursor or the full path to Cursor.exe, without arguments." FontSize="11" Foreground="{DynamicResource QuietBrush}" Margin="0,7,0,0"/>
+                                    <TextBlock Text="Local checkout for the active workspace" Margin="0,14,0,6"/>
+                                    <TextBlock Text="{Binding Actions.LocalFolder}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Actions.LocalFolder}" FontSize="12" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Link an existing checkout to open files in Explorer or Cursor." FontSize="11" Foreground="{DynamicResource QuietBrush}" Margin="0,0,0,10"/>
+                                    <WrapPanel>
+                                        <Button Content="Link checkout…" Command="{Binding Actions.LinkLocalFolderCommand}" Style="{StaticResource ActionButton}" Margin="0,0,8,0"/>
+                                        <Button Content="Unlink" Command="{Binding Actions.UnlinkLocalFolderCommand}" Style="{StaticResource QuietButton}" Margin="0,0,8,0"/>
+                                        <Button Content="Copy remote URL" Command="{Binding Actions.CopyRemoteUrlCommand}" Style="{StaticResource QuietButton}"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Margin="0,20,0,0" Padding="0,15,0,0">
+                                <WrapPanel>
+                                    <Button Content="Reset layout" Command="{Binding ResetLayoutCommand}" Style="{StaticResource QuietButton}"/>
+                                    <Button Content="Open app data" Command="{Binding Settings.OpenDataFolderCommand}" Style="{StaticResource QuietButton}"/>
+                                    <Button Content="Remove workspace" Command="{Binding Workspace.RemoveRepositoryCommand}" Style="{StaticResource QuietButton}" Foreground="{DynamicResource DeletedBrush}"/>
+                                </WrapPanel>
+                            </Border>
+                            <TextBlock Text="{Binding Settings.Error}" Foreground="{DynamicResource DeletedBrush}" TextWrapping="Wrap" Margin="0,12,0,0" Visibility="{Binding Settings.Error, Converter={StaticResource NonEmptyVisibility}}"/>
+                            <TextBlock Text="{Binding Actions.Error}" Foreground="{DynamicResource DeletedBrush}" TextWrapping="Wrap" Margin="0,12,0,0" Visibility="{Binding Actions.Error, Converter={StaticResource NonEmptyVisibility}}"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <Button Grid.Row="2" Content="Done" Command="{Binding Settings.CloseCommand}" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" MinWidth="85" Margin="0,20,0,0"/>
                 </Grid>
             </Border>
         </Grid>
-        <Grid Background="#AB050B10" Visibility="{Binding Import.IsOpen, Converter={StaticResource BoolVisibility}}" KeyboardNavigation.TabNavigation="Cycle">
+        <Grid Background="{DynamicResource OverlayBrush}" Visibility="{Binding Import.IsOpen, Converter={StaticResource BoolVisibility}}" KeyboardNavigation.TabNavigation="Cycle">
             <Border Style="{StaticResource OverlayCard}" Width="790" MaxHeight="800" Margin="20">
-                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                    <DockPanel Margin="0,0,0,20"><dx:SimpleButton DockPanel.Dock="Right" Content="✕" Style="{StaticResource QuietButton}" Command="{Binding Import.CloseCommand}" Padding="8,4" AutomationProperties.Name="Close repository import"/><StackPanel><TextBlock Text="Your repositories, together" FontSize="23" FontWeight="SemiBold"/><TextBlock Text="Import from GitHub or Azure DevOps, including private repositories." FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0"/></StackPanel></DockPanel>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Margin="0,0,0,20">
+                        <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource QuietButton}" Command="{Binding Import.CloseCommand}" Padding="8,4" AutomationProperties.Name="Close repository import"/>
+                        <StackPanel>
+                            <TextBlock Text="Your repositories, together" FontSize="23" FontWeight="SemiBold"/>
+                            <TextBlock Text="Import from GitHub or Azure DevOps, including private repositories." FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </DockPanel>
                     <StackPanel Grid.Row="1">
-                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="170"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                            <StackPanel Margin="0,0,12,0"><TextBlock Text="PROVIDER" Style="{StaticResource Eyebrow}" Margin="0,0,0,7"/><dxe:ComboBoxEdit ItemsSource="{Binding Import.Providers}" EditValue="{Binding Import.Provider, Mode=TwoWay}" IsTextEditable="False" MinHeight="34" AutomationProperties.Name="Repository provider"/></StackPanel>
-                            <StackPanel Grid.Column="1" Margin="0,0,12,0"><TextBlock Text="ORGANIZATION" Style="{StaticResource Eyebrow}" Margin="0,0,0,7"/><dxe:TextEdit EditValue="{Binding Import.Organization, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" NullText="{Binding Import.OrganizationHint}" MinHeight="34" ToolTip="GitHub: optional owner filter. Azure DevOps: required organization name or URL." AutomationProperties.Name="Owner or organization"/></StackPanel>
-                            <StackPanel Grid.Column="2"><TextBlock Text="PROJECT (OPTIONAL)" Style="{StaticResource Eyebrow}" Margin="0,0,0,7"/><dxe:TextEdit EditValue="{Binding Import.Project, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Import.IsAzureDevOps}" NullText="Azure DevOps only" MinHeight="34" ToolTip="Leave blank to include all Azure DevOps projects. Not used for GitHub." AutomationProperties.Name="Azure DevOps project"/></StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="170"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Text="Provider" Style="{StaticResource Eyebrow}" Margin="0,0,0,7"/>
+                                <ComboBox ItemsSource="{Binding Import.Providers}" SelectedItem="{Binding Import.Provider, Mode=TwoWay}" IsEditable="False" MinHeight="34" AutomationProperties.Name="Repository provider"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                <TextBlock Text="Organization" Style="{StaticResource Eyebrow}" Margin="0,0,0,7"/>
+                                <ui:SearchBox ShowSearchIcon="False" Text="{Binding Import.Organization, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Placeholder="{Binding Import.OrganizationHint}" MinHeight="34" ToolTip="GitHub: optional owner filter. Azure DevOps: required organization name or URL." AutomationProperties.Name="Owner or organization"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Project (optional)" Style="{StaticResource Eyebrow}" Margin="0,0,0,7"/>
+                                <ui:SearchBox ShowSearchIcon="False" Text="{Binding Import.Project, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Import.IsAzureDevOps}" Placeholder="Azure DevOps only" MinHeight="34" ToolTip="Leave blank to include all Azure DevOps projects. Not used for GitHub." AutomationProperties.Name="Azure DevOps project"/>
+                            </StackPanel>
                         </Grid>
-                        <TextBlock Text="ACCESS TOKEN (OPTIONAL WITH EXISTING CLI SIGN-IN)" Style="{StaticResource Eyebrow}" Margin="0,15,0,7"/>
-                        <DockPanel><dx:SimpleButton DockPanel.Dock="Right" Content="Discover repositories" Command="{Binding Import.DiscoverCommand}" Style="{StaticResource PrimaryButton}" Margin="12,0,0,0"/><dxe:PasswordBoxEdit Password="{Binding Import.AccessToken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MinHeight="36" AutomationProperties.Name="Session only access token"/></DockPanel>
+                        <TextBlock Text="Access token (optional with existing cli sign-in)" Style="{StaticResource Eyebrow}" Margin="0,15,0,7"/>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Discover repositories" Command="{Binding Import.DiscoverCommand}" Style="{StaticResource PrimaryButton}" Margin="12,0,0,0"/>
+                            <PasswordBox b:PasswordBehavior.Password="{Binding Import.AccessToken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MinHeight="36" AutomationProperties.Name="Session only access token"/>
+                        </DockPanel>
                         <TextBlock Text="Tokens stay in memory for this app session. Git uses your existing Git credentials." TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource QuietBrush}" Margin="0,9,0,17"/>
                     </StackPanel>
-                    <DockPanel Grid.Row="2" Margin="0,0,0,9"><dx:SimpleButton DockPanel.Dock="Right" Content="Clear" Command="{Binding Import.ClearSelectionCommand}" Style="{StaticResource QuietButton}"/><dx:SimpleButton DockPanel.Dock="Right" Content="Select all" Command="{Binding Import.SelectAllCommand}" Style="{StaticResource QuietButton}" Margin="8,0,0,0"/><dxe:TextEdit EditValue="{Binding Import.Search, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" NullText="Search discovered repositories…" MinHeight="34" AutomationProperties.Name="Search import repositories"/></DockPanel>
+                    <DockPanel Grid.Row="2" Margin="0,0,0,9">
+                        <Button DockPanel.Dock="Right" Content="Clear" Command="{Binding Import.ClearSelectionCommand}" Style="{StaticResource QuietButton}"/>
+                        <Button DockPanel.Dock="Right" Content="Select all" Command="{Binding Import.SelectAllCommand}" Style="{StaticResource QuietButton}" Margin="8,0,0,0"/>
+                        <ui:SearchBox Text="{Binding Import.Search, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Placeholder="Search discovered repositories…" MinHeight="34" AutomationProperties.Name="Search import repositories"/>
+                    </DockPanel>
                     <Grid Grid.Row="3" MinHeight="140" MaxHeight="300">
-                        <ListBox ItemsSource="{Binding Import.VisibleRepositories}" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource LineBrush}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Discovered repositories"><ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="8,9"/></Style></ListBox.ItemContainerStyle><ListBox.ItemTemplate><DataTemplate><CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" HorizontalContentAlignment="Stretch"><DockPanel Margin="7,0,0,0"><TextBlock DockPanel.Dock="Right" Text="PRIVATE" FontSize="9" Foreground="{DynamicResource AccentBrush}" Margin="12,0" Visibility="{Binding Repository.IsPrivate, Converter={StaticResource BoolVisibility}}"/><StackPanel><TextBlock Text="{Binding Repository.FullName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Repository.CloneUrl}" Foreground="{DynamicResource QuietBrush}" FontSize="10" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"/></StackPanel></DockPanel></CheckBox></DataTemplate></ListBox.ItemTemplate></ListBox>
+                        <ListBox ItemsSource="{Binding Import.VisibleRepositories}" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource LineBrush}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Discovered repositories">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Padding" Value="8,9"/>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" HorizontalContentAlignment="Stretch">
+                                        <DockPanel Margin="7,0,0,0">
+                                            <TextBlock DockPanel.Dock="Right" Text="Private" FontSize="9" Foreground="{DynamicResource AccentBrush}" Margin="12,0" Visibility="{Binding Repository.IsPrivate, Converter={StaticResource BoolVisibility}}"/>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Repository.FullName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Repository.CloneUrl}" Foreground="{DynamicResource QuietBrush}" FontSize="10" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                         <TextBlock Text="Discover repositories to choose what to import." Foreground="{DynamicResource QuietBrush}" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding Import.VisibleRepositories.Count, Converter={StaticResource EmptyVisibility}}"/>
-                        <Border Background="{DynamicResource SurfaceBrush}" Opacity="0.97" Visibility="{Binding Import.IsBusy, Converter={StaticResource BoolVisibility}}"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20"><dx:WaitIndicator DeferedVisibility="{Binding Import.IsBusy}" Content="Loading repositories…"/><TextBlock Text="{Binding Import.Status}" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" TextAlignment="Center" Margin="0,10"/></StackPanel></Border>
+                        <Border Background="{DynamicResource SurfaceBrush}" Opacity="0.97" Visibility="{Binding Import.IsBusy, Converter={StaticResource BoolVisibility}}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
+                                <ui:BusyIndicator Content="Loading repositories…"/>
+                                <TextBlock Text="{Binding Import.Status}" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" TextAlignment="Center" Margin="0,10"/>
+                            </StackPanel>
+                        </Border>
                     </Grid>
-                    <StackPanel Grid.Row="4" Margin="0,13,0,0"><ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto" Visibility="{Binding Import.Error, Converter={StaticResource NonEmptyVisibility}}"><TextBlock Text="{Binding Import.Error}" Foreground="{DynamicResource DeletedBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/></ScrollViewer><TextBlock Text="{Binding Import.Status}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/><DockPanel><dx:SimpleButton Content="Cancel loading" Command="{Binding Import.CancelCommand}" Style="{StaticResource QuietButton}" HorizontalAlignment="Left" Visibility="{Binding Import.IsBusy, Converter={StaticResource BoolVisibility}}"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><dx:SimpleButton Content="Close" Command="{Binding Import.CloseCommand}" Style="{StaticResource ActionButton}" Margin="0,0,10,0"/><dx:SimpleButton Content="Import selected" Command="{Binding Import.ImportSelectedCommand}" Style="{StaticResource PrimaryButton}"/></StackPanel></DockPanel></StackPanel>
+                    <StackPanel Grid.Row="4" Margin="0,13,0,0">
+                        <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto" Visibility="{Binding Import.Error, Converter={StaticResource NonEmptyVisibility}}">
+                            <TextBlock Text="{Binding Import.Error}" Foreground="{DynamicResource DeletedBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        </ScrollViewer>
+                        <TextBlock Text="{Binding Import.Status}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <DockPanel>
+                            <Button Content="Cancel loading" Command="{Binding Import.CancelCommand}" Style="{StaticResource QuietButton}" HorizontalAlignment="Left" Visibility="{Binding Import.IsBusy, Converter={StaticResource BoolVisibility}}"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Close" Command="{Binding Import.CloseCommand}" Style="{StaticResource ActionButton}" Margin="0,0,10,0"/>
+                                <Button Content="Import selected" Command="{Binding Import.ImportSelectedCommand}" Style="{StaticResource PrimaryButton}"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>
-        <Grid Background="#AB050B10" Visibility="{Binding IsPaletteOpen, Converter={StaticResource BoolVisibility}}" KeyboardNavigation.TabNavigation="Cycle">
+        <Grid Background="{DynamicResource OverlayBrush}" Visibility="{Binding IsPaletteOpen, Converter={StaticResource BoolVisibility}}" KeyboardNavigation.TabNavigation="Cycle">
             <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Width="590" MaxHeight="590" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,110,0,0" Padding="18">
-                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                    <DockPanel Margin="0,0,0,14"><dx:SimpleButton DockPanel.Dock="Right" Content="Esc" Style="{StaticResource QuietButton}" Command="{Binding ClosePaletteCommand}" MinHeight="24" Padding="5,1"/><TextBlock Text="COMMAND PALETTE" Style="{StaticResource Eyebrow}"/></DockPanel>
-                    <dxe:TextEdit Grid.Row="1" EditValue="{Binding PaletteSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" NullText="Find a command or switch repositories…" MinHeight="42" FontSize="14" b:FocusBehavior.FocusWhenVisible="True" b:FocusBehavior.NextTarget="{Binding ElementName=PaletteList}" AutomationProperties.Name="Search commands"><dxe:TextEdit.InputBindings><KeyBinding Key="Enter" Command="{Binding ExecutePaletteCommand}"/></dxe:TextEdit.InputBindings></dxe:TextEdit>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Margin="0,0,0,14">
+                        <Button DockPanel.Dock="Right" Content="Esc" Style="{StaticResource QuietButton}" Command="{Binding ClosePaletteCommand}" MinHeight="24" Padding="5,1"/>
+                        <TextBlock Text="Command palette" Style="{StaticResource Eyebrow}"/>
+                    </DockPanel>
+                    <ui:SearchBox Grid.Row="1" Text="{Binding PaletteSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Placeholder="Find a command or switch repositories…" MinHeight="42" FontSize="14" b:FocusBehavior.FocusWhenVisible="True" b:FocusBehavior.NextTarget="{Binding ElementName=PaletteList}" AutomationProperties.Name="Search commands">
+                        <ui:SearchBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding ExecutePaletteCommand}"/>
+                        </ui:SearchBox.InputBindings>
+                    </ui:SearchBox>
                     <ListBox x:Name="PaletteList" Grid.Row="2" ItemsSource="{Binding PaletteItems}" SelectedItem="{Binding SelectedPaletteItem, Mode=TwoWay}" BorderThickness="0" Background="Transparent" Margin="0,12,0,0" MaxHeight="355" ScrollViewer.HorizontalScrollBarVisibility="Disabled" b:CommandBehavior.DoubleClickCommand="{Binding ExecutePaletteCommand}" AutomationProperties.Name="Available commands">
-                        <ListBox.InputBindings><KeyBinding Key="Enter" Command="{Binding ExecutePaletteCommand}"/></ListBox.InputBindings>
-                        <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="10,11"/></Style></ListBox.ItemContainerStyle>
-                        <ListBox.ItemTemplate><DataTemplate><DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding Key, Converter={StaticResource PaletteShortcut}}" Style="{StaticResource Mono}" FontSize="10" Margin="16,0,0,0"/><StackPanel><TextBlock Text="{Binding Title}" FontWeight="SemiBold"/><TextBlock Text="{Binding Description}" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/></StackPanel></DockPanel></DataTemplate></ListBox.ItemTemplate>
+                        <ListBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding ExecutePaletteCommand}"/>
+                        </ListBox.InputBindings>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Padding" Value="10,11"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Key, Converter={StaticResource PaletteShortcut}}" Style="{StaticResource Mono}" FontSize="10" Margin="16,0,0,0"/>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Description}" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
                     </ListBox>
                     <TextBlock Grid.Row="3" Text="↑ ↓ to navigate     Enter to run     Esc to dismiss" Foreground="{DynamicResource QuietBrush}" FontSize="10" Margin="10,14,0,0"/>
                 </Grid>
             </Border>
         </Grid>
-        <Border Background="{DynamicResource CanvasBrush}" Opacity="0.98" Visibility="{Binding IsInitializing, Converter={StaticResource BoolVisibility}}"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><dx:WaitIndicator DeferedVisibility="{Binding IsInitializing}" Content="Loading GitHistory…"/><TextBlock Text="Restoring your workspace and preferences" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,12"/></StackPanel></Border>
+        <Border Background="{DynamicResource CanvasBrush}" Opacity="0.98" Visibility="{Binding IsInitializing, Converter={StaticResource BoolVisibility}}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <ui:BusyIndicator Content="Loading GitHistory…"/>
+                <TextBlock Text="Restoring your workspace and preferences" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,12"/>
+            </StackPanel>
+        </Border>
     </Grid>
-</dx:ThemedWindow>
+</Window>

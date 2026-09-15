@@ -3,15 +3,10 @@
   <ItemGroup>
     <ProjectReference Include="..\GitHistory.Core\GitHistory.Core.csproj" />
     <ProjectReference Include="..\GitHistory.Infrastructure\GitHistory.Infrastructure.csproj" />
+    <ProjectReference Include="..\GitHistory.UI\GitHistory.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DevExpress.Wpf.Accordion" Version="26.1.4" />
-    <PackageReference Include="DevExpress.Wpf.Charts" Version="26.1.4" />
-    <PackageReference Include="DevExpress.Wpf.Core" Version="26.1.4" />
-    <PackageReference Include="DevExpress.Wpf.Docking" Version="26.1.4" />
-    <PackageReference Include="DevExpress.Wpf.Grid.Core" Version="26.1.4" />
-    <PackageReference Include="DevExpress.Wpf.ThemesLW" Version="26.1.4" />
     <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

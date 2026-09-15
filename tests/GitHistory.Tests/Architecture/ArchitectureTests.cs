@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using GitHistory.Core.ViewModels;
@@ -8,7 +9,7 @@ namespace GitHistory.Tests.Architecture;
 public sealed class ArchitectureTests
 {
     [Fact]
-    public void Core_has_no_Wpf_DevExpress_application_or_infrastructure_assembly_dependencies()
+    public void Core_has_no_Wpf_vendor_UI_application_or_infrastructure_assembly_dependencies()
     {
         var references = typeof(WorkspaceViewModel).Assembly.GetReferencedAssemblies();
         Assert.DoesNotContain(references, reference => IsForbiddenAssembly(reference.Name ?? ""));
@@ -16,9 +17,38 @@ public sealed class ArchitectureTests
         var document = XDocument.Load(project);
         Assert.DoesNotContain(document.Descendants("ProjectReference"), item =>
             (item.Attribute("Include")?.Value ?? "").Contains("Infrastructure", StringComparison.OrdinalIgnoreCase) ||
-            (item.Attribute("Include")?.Value ?? "").Contains("App", StringComparison.OrdinalIgnoreCase));
+            (item.Attribute("Include")?.Value ?? "").Contains("App", StringComparison.OrdinalIgnoreCase) ||
+            (item.Attribute("Include")?.Value ?? "").Contains("GitHistory.UI", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(document.Descendants("PackageReference"), item => IsForbiddenAssembly(item.Attribute("Include")?.Value ?? ""));
         Assert.DoesNotContain(document.Descendants("UseWPF"), item => item.Value.Equals("true", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Application_and_locked_dependencies_do_not_require_DevExpress()
+    {
+        string directory = Path.Combine(RepositoryRoot(), "src", "GitHistory.App");
+        var project = XDocument.Load(Path.Combine(directory, "GitHistory.App.csproj"));
+        Assert.DoesNotContain(project.Descendants("PackageReference"), item =>
+            (item.Attribute("Include")?.Value ?? "").StartsWith("DevExpress", StringComparison.OrdinalIgnoreCase));
+        using var packages = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "packages.lock.json")));
+        foreach (var target in packages.RootElement.GetProperty("dependencies").EnumerateObject())
+            Assert.DoesNotContain(target.Value.EnumerateObject(), package => package.Name.StartsWith("DevExpress", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Reusable_UI_has_no_packages_project_references_or_application_domain_types()
+    {
+        string directory = Path.Combine(RepositoryRoot(), "src", "GitHistory.UI");
+        var project = XDocument.Load(Path.Combine(directory, "GitHistory.UI.csproj"));
+        Assert.Empty(project.Descendants("PackageReference"));
+        Assert.Empty(project.Descendants("ProjectReference"));
+        foreach (string path in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
+            .Where(path => Path.GetExtension(path) is ".cs" or ".xaml")
+            .Where(path => !Path.GetRelativePath(directory, path).Split(Path.DirectorySeparatorChar).Any(part => part is "obj" or "bin")))
+        {
+            string source = File.ReadAllText(path);
+            Assert.DoesNotMatch(@"\bGitHistory\.(Core|Infrastructure|App)\b|\bDevExpress\b", source);
+        }
     }
 
     [Fact]
@@ -70,11 +100,12 @@ public sealed class ArchitectureTests
     private static bool IsForbiddenAssembly(string name) =>
         name.StartsWith("DevExpress", StringComparison.OrdinalIgnoreCase) ||
         name.StartsWith("Presentation", StringComparison.OrdinalIgnoreCase) ||
-        name is "WindowsBase" or "System.Xaml" or "GitHistory.App" or "GitHistory.Infrastructure";
+        name is "WindowsBase" or "System.Xaml" or "GitHistory.App" or "GitHistory.Infrastructure" or "GitHistory.UI";
 
     private static bool IsForbiddenNamespace(string name) =>
         name.StartsWith("System.Windows", StringComparison.Ordinal) || name.StartsWith("DevExpress", StringComparison.Ordinal) ||
-        name.StartsWith("GitHistory.Infrastructure", StringComparison.Ordinal) || name.StartsWith("GitHistory.App", StringComparison.Ordinal);
+        name.StartsWith("GitHistory.Infrastructure", StringComparison.Ordinal) || name.StartsWith("GitHistory.App", StringComparison.Ordinal) ||
+        name.StartsWith("GitHistory.UI", StringComparison.Ordinal);
 
     private static IEnumerable<Type> ExpandType(Type type)
     {

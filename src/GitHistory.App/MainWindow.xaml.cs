@@ -1,8 +1,8 @@
-using DevExpress.Xpf.Core;
+using System.Windows;
 
 namespace GitHistory.App;
 
-public partial class MainWindow : ThemedWindow
+public partial class MainWindow : Window
 {
     public MainWindow() => InitializeComponent();
 }

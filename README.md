@@ -2,7 +2,7 @@
 
 **Follow the change.** A native Windows workspace for discovering which files changed in a remote Git repository—and understanding the change without leaving the app.
 
-Built with **.NET 10**, **DevExpress WPF 26.1.4**, and **CommunityToolkit.Mvvm**. Supports HTTPS and SSH remotes from GitHub, GitLab, Azure DevOps, and other Git servers.
+Built with **.NET 10**, **native WPF**, and **CommunityToolkit.Mvvm**. The shared **GitHistory.UI** control library needs no commercial UI license. Supports HTTPS and SSH remotes from GitHub, GitLab, Azure DevOps, and other Git servers.
 
 ![Recent changes in the dark workspace](docs/screenshots/dark.png)
 
@@ -14,7 +14,9 @@ Built with **.NET 10**, **DevExpress WPF 26.1.4**, and **CommunityToolkit.Mvvm**
 4. Use **Recent Changes** for a date range or **All Files** for the current tree ranked by its last branch change. Search paths, commit subjects, authors, and hashes; filter by author or folder.
 5. Select a file, choose a history entry, and read its native inline diff. Copy the path or commit SHA when needed.
 
-The activity chart and range selector narrow the date window. The file grid supports column sizing, reordering, sorting, grouping, and filtering, with a dedicated **Folder** column and full-path tooltips. Dock the history and diff panes to suit your workflow. Theme, selected repository, selected branch, view mode, pane layout, and file-grid layout survive normal shutdown; **Reset Layout** restores the defaults.
+Click a day in the activity chart or drag across days to narrow the date window. Arrow keys select days; Shift+arrows extend the range. The file grid supports column sizing, reordering, and sorting, with a dedicated **Folder** column and full-path tooltips. Right-click a column heading to group results or choose visible columns. Search, author, folder, and date filters narrow the results.
+
+Choose **Balanced**, **Side by side**, or **Focus diff** from the toolbar layout picker. Resize the panes with their dividers; each layout remembers its own sizes. Drag the sidebar's right edge to widen it, or use its arrow button / **Ctrl+B** to collapse and expand it. Theme, repository, branch, view mode, layout, sidebar width, and grid preferences survive normal shutdown; **Reset layout** restores the workspace defaults.
 
 ![All current files and their history](docs/screenshots/all-files.png)
 
@@ -23,7 +25,9 @@ The activity chart and range selector narrow the date window. The file grid supp
 - Search workspaces by name or remote URL. Pin favorites and switch **Pinned** on for a compact list. The active workspace remains loaded when a search hides its navigation row.
 - Search the folder tree without losing the active folder filter. Matching folders retain their ancestors; **Clear filters** resets the folder, author, and file search together.
 - Choose **Import repositories** to discover GitHub or Azure DevOps repositories available to your account, including private repositories. Search the results, select several, and import them together. Successful imports remain saved if another repository fails or you cancel. Importing keeps the active workspace selected.
-- Use **Settings** to choose a theme and default date range, enable or disable refresh on open, hide the activity summary, control automatic PR lookups, and configure Cursor's executable. Settings, pinned workspaces, and linked checkout folders persist on normal shutdown.
+- Use **Settings** to choose **Dark**, **Light**, **Classic** (the original charcoal/teal colors), or **Dusk** (aubergine/lavender). Settings also controls the default date range, refresh on open, activity summary, automatic PR lookups, and Cursor's executable. Settings, pinned workspaces, and linked checkout folders persist on normal shutdown.
+
+Theme previews: [Classic](docs/screenshots/classic.png) · [Dusk](docs/screenshots/dusk.png). Layout previews: [Side by side](docs/screenshots/layout-side-by-side.png) · [Focus diff](docs/screenshots/layout-focus-diff.png) · [Collapsed sidebar](docs/screenshots/sidebar-collapsed.png).
 
 ![Settings](docs/screenshots/settings.png)
 
@@ -51,7 +55,6 @@ Requirements:
 
 - Windows with the **.NET 10 SDK** for development.
 - **Git for Windows** on `PATH`. HTTPS authentication uses your configured Git Credential Manager; SSH uses your installed client, agent, keys, and host trust.
-- A registered **DevExpress v26.1 trial or paid developer key**. Download it from your DevExpress account and register it at `%APPDATA%\DevExpress\DevExpress_License.txt`. Never commit the key. [Official license setup](https://docs.devexpress.com/GeneralInformation/405494/trial-register/set-up-your-dev-express-license-key)
 
 ```powershell
 dotnet restore GitHistory.slnx
@@ -59,17 +62,15 @@ dotnet build GitHistory.slnx
 dotnet run --project src/GitHistory.App
 ```
 
-All packages restore from **https://api.nuget.org/v3/index.json**. The repository's source mapping makes this explicit even when the machine has older DevExpress feed mappings.
-
-Without a registered key, DevExpress emits its evaluation warning and may display trial notices. This repository includes neither license keys nor DevExpress binaries. Trial use is governed by DevExpress's evaluation terms; register an appropriate license before distributing an application.
+All packages restore from **https://api.nuget.org/v3/index.json**. No vendor feed, license key, or UI subscription is required.
 
 ### Publish for local evaluation
 
 ```powershell
-dotnet publish src/GitHistory.App -c Release -r win-x64 --self-contained true -o artifacts/publish/win-x64
+dotnet publish src/GitHistory.App -c Release -r win-x64 --self-contained true -o artifacts/publish/native-win-x64
 ```
 
-Run `artifacts/publish/win-x64/GitHistory.App.exe`. The self-contained output includes .NET; Git still needs to be installed. Published binaries remain outside Git.
+Run `artifacts/publish/native-win-x64/GitHistory.App.exe`. The self-contained output includes .NET; Git still needs to be installed. Published binaries remain outside Git.
 
 ## What “last changed” means
 
@@ -92,14 +93,20 @@ Refresh runs when opening/selecting a repository or branch, or when requested ma
 
 ![Light theme](docs/screenshots/light.png)
 
-| Area | DevExpress controls |
+| Area | Native controls |
 |---|---|
-| Shell and repository navigation | ThemedWindow, AccordionControl |
-| File browser and folder hierarchy | GridControl / TableView, TreeListControl |
-| Activity and date selection | ChartControl, RangeControl |
-| Resizable details | DockLayoutManager, DXTabControl |
-| Native diff | Virtualized read-only GridControl with line templates |
-| Editors, progress, and appearance | DevExpress editors and loading controls; lightweight Win11Dark / Win11Light |
+| Shell and repository navigation | Window, reusable expandable Sidebar, styled ListBox |
+| File browser and folder hierarchy | Virtualized DataGrid, TreeView |
+| Activity and date selection | Reusable ActivityChart with mouse and keyboard range selection, DatePicker |
+| Resizable details | Reusable WorkspaceLayout and Pane, native GridSplitter, TabControl |
+| Native diff | Read-only DataGrid with semantic line colors and selectable full-line tooltips |
+| Editors, progress, and appearance | Reusable SearchBox and BusyIndicator; four shared palettes and native control templates |
+
+### Reuse the UI in another application
+
+Reference `src/GitHistory.UI/GitHistory.UI.csproj` and merge its theme and control dictionaries. It has **no package references or dependencies on the GitHistory domain, services, or application**. `SearchBox`, `Pane`, `BusyIndicator`, `ActivityChart`, `Sidebar`, and `WorkspaceLayout` use dependency properties, commands, and standard WPF binding. Buttons, inputs, navigation, grids, tabs, menus, scrollbars, and focus states share semantic color resources. `ThemeCatalog` supplies theme choices and runtime switching. See the [UI library guide](src/GitHistory.UI/README.md) for setup and examples.
+
+The workspace offers three arrangements with adjustable dividers, retaining the same controls and selections when switching layouts. Native layout/sidebar/column preferences are saved in `layout/workspace-v1.json`; other application settings remain compatible. Free-floating windows and vendor XML docking layouts are not supported.
 
 `GitHistory.Core` contains immutable data models, query logic, application contracts, and sealed view models. `GitHistory.Infrastructure` implements Git execution, SQLite persistence, and source-generated JSON settings. `GitHistory.App` contains XAML, presentation behaviors, desktop services, and the Generic Host composition root. `GitHistory.Tests` exercises logic and real Git fixtures without starting WPF.
 
@@ -112,7 +119,8 @@ View models use public partial `[ObservableProperty]` properties and generated a
 | Ctrl+K | Command palette |
 | Ctrl+F | Focus file search |
 | F5 / Ctrl+R | Refresh selected repository |
-| Ctrl+D | Toggle dark/light theme |
+| Ctrl+D | Cycle Dark, Light, Classic, and Dusk |
+| Ctrl+B | Collapse / expand sidebar |
 | Escape | Close the active overlay |
 
 ![Command palette](docs/screenshots/command-palette.png)
@@ -132,21 +140,10 @@ dotnet test tests/GitHistory.Tests -c Release
 dotnet run --project src/GitHistory.App -- --capture-screenshots artifacts/ui-verification
 ```
 
-The opt-in screenshot command starts an isolated demo workspace and renders the **actual WPF controls**, including dark/light themes, file views, and overlays. It also records binding diagnostics and renders at 100%, 150%, and 200% density. This does not replace testing physical transitions between monitors with different scaling.
+The opt-in screenshot command starts an isolated demo workspace and renders the **actual WPF controls**, including all four themes, layout presets, sidebar states, file views, and overlays. It also records binding diagnostics, checks caret alignment and row focus styling, and renders at 100%, 150%, and 200% density. This does not replace testing physical transitions between monitors with different scaling.
 
 Tests cover first-parent merge attribution, clock skew, rename and delete/re-add history, unusual filenames, binary/submodule/LFS entries, force pushes, cancellation, cache recovery, query behavior, stale UI results, and architecture boundaries. See [performance measurements](docs/performance.md) for the reproducible 100,000-commit benchmark.
 
 See the [workspace update notes](docs/navigation-update.md) for the selection fix and new features, and the [delivery verification notes](docs/validation.md) for the tested publish, screenshots, checks, and remaining manual validation.
 
-GitHub Actions runs Windows restore, tests, and build. Set the optional `DEVEXPRESS_LICENSE` repository secret to register the build agent; never place a license in tracked configuration.
-
-## DevExpress agent skills and MCP
-
-Install the official WPF plugin in Codex:
-
-```text
-codex plugin marketplace add DevExpress/agent-skills
-codex plugin add dx-wpf@DevExpress-agent-skills
-```
-
-The [official plugin](https://github.com/DevExpress/agent-skills/tree/main/plugins/dx-wpf) supplies the WPF skills and the `dxdocs` documentation MCP at `https://api.devexpress.com/mcp/docs`. The plugin is development tooling; it is not an app runtime dependency. CommunityToolkit remains this app's MVVM framework.
+GitHub Actions runs Windows restore, tests, and build without a UI license secret.

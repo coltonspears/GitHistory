@@ -15,12 +15,19 @@ public sealed partial class SettingsViewModel(IAppearanceService appearance, IDe
     [ObservableProperty] public partial bool AutoLoadPullRequests { get; set; }
     [ObservableProperty] public partial string CursorCommand { get; set; } = "cursor";
     [ObservableProperty] public partial string Error { get; set; } = "";
-    public IReadOnlyList<string> Themes { get; } = ["Dark", "Light"];
+    public IReadOnlyList<string> Themes { get; } = Array.AsReadOnly(new[] { "Dark", "Light", "Classic", "Dusk" });
     public IReadOnlyList<string> DatePresets { get; } = ["24 hours", "7 days", "30 days"];
-    partial void OnThemeChanged(string value) => appearance.SetTheme(value == "Light" ? "Light" : "Dark");
+    partial void OnThemeChanged(string value)
+    {
+        string theme = NormalizeTheme(value);
+        if (value != theme) { Theme = theme; return; }
+        appearance.SetTheme(theme);
+    }
+    private string NormalizeTheme(string? value) => Themes.FirstOrDefault(theme => string.Equals(theme, value, StringComparison.OrdinalIgnoreCase)) ?? "Dark";
+    public void CycleTheme() => Theme = Themes[(Themes.ToList().IndexOf(Theme) + 1) % Themes.Count];
     public void Load(UserSettings settings)
     {
-        Theme = settings.Theme == "Light" ? "Light" : "Dark";
+        Theme = NormalizeTheme(settings.Theme);
         appearance.SetTheme(Theme);
         DefaultDatePreset = DatePresets.Contains(settings.DefaultDatePreset) ? settings.DefaultDatePreset : "7 days";
         RefreshOnOpen = settings.RefreshOnOpen;

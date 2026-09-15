@@ -3,13 +3,17 @@
     <SolidColorBrush x:Key="SidebarBrush" Color="#101418"/>
     <SolidColorBrush x:Key="SurfaceBrush" Color="#1A2027"/>
     <SolidColorBrush x:Key="ElevatedBrush" Color="#222A33"/>
+    <SolidColorBrush x:Key="HoverBrush" Color="#2B3541"/>
     <SolidColorBrush x:Key="LineBrush" Color="#2B343E"/>
     <SolidColorBrush x:Key="TextBrush" Color="#EBF0F4"/>
     <SolidColorBrush x:Key="MutedBrush" Color="#99A7B5"/>
-    <SolidColorBrush x:Key="QuietBrush" Color="#6F8292"/>
+    <SolidColorBrush x:Key="QuietBrush" Color="#91A1AF"/>
     <SolidColorBrush x:Key="AccentBrush" Color="#65DFBC"/>
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#8FEACF"/>
     <SolidColorBrush x:Key="AccentTextBrush" Color="#0B2921"/>
     <SolidColorBrush x:Key="AccentSoftBrush" Color="#153D34"/>
+    <SolidColorBrush x:Key="FocusBrush" Color="#9BF0D7"/>
+    <SolidColorBrush x:Key="OverlayBrush" Color="#B0080D11"/>
     <SolidColorBrush x:Key="AddedBrush" Color="#82E1B2"/>
     <SolidColorBrush x:Key="AddedBackgroundBrush" Color="#18392D"/>
     <SolidColorBrush x:Key="DeletedBrush" Color="#F4A4A9"/>
@@ -20,4 +24,5 @@
     <SolidColorBrush x:Key="RenamedBackgroundBrush" Color="#273149"/>
     <SolidColorBrush x:Key="DiffHeaderBrush" Color="#A9BDDD"/>
     <SolidColorBrush x:Key="DiffHeaderBackgroundBrush" Color="#212B3D"/>
+    <SolidColorBrush x:Key="ChartTrackBrush" Color="#305A52"/>
 </ResourceDictionary>

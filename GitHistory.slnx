@@ -3,6 +3,7 @@
     <Project Path="src/GitHistory.App/GitHistory.App.csproj" />
     <Project Path="src/GitHistory.Core/GitHistory.Core.csproj" />
     <Project Path="src/GitHistory.Infrastructure/GitHistory.Infrastructure.csproj" />
+    <Project Path="src/GitHistory.UI/GitHistory.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/GitHistory.Tests/GitHistory.Tests.csproj" />

@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.Messaging;
-using DevExpress.Xpf.Core;
 using GitHistory.App.Services;
 using GitHistory.Core.Services;
 using GitHistory.Core.ViewModels;
@@ -21,12 +20,6 @@ public partial class App : System.Windows.Application
     private bool _stopping;
     private TextWriterTraceListener? _bindings;
     private string _logDirectory = "";
-
-    static App()
-    {
-        CompatibilitySettings.UseLightweightThemes = true;
-        ApplicationThemeHelper.ApplicationThemeName = LightweightTheme.Win11Dark.Name;
-    }
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -82,7 +75,7 @@ public partial class App : System.Windows.Application
             window.DataContext = _viewModel;
             MainWindow = window;
             _host.Services.GetRequiredService<AppearanceService>().AttachWindow(window);
-            if (captureDirectory is not null) { window.Left = -20000; window.Top = -20000; window.ShowInTaskbar = false; }
+            if (captureDirectory is not null) { window.WindowStartupLocation = WindowStartupLocation.Manual; window.Left = -20000; window.Top = -20000; window.ShowInTaskbar = false; }
             window.Closed += async (_, _) => await StopAsync();
             window.Show();
             await _viewModel.InitializeAsync(_lifetime.Token);
